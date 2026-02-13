@@ -183,6 +183,41 @@ def format_output(result, quiet: bool = False) -> str:
 
     output.append("")
 
+    if result.bb_middle is not None:
+        output.append("━" * 64)
+        output.append("📊 BOLLINGER BANDS (20, 2σ)")
+        output.append("━" * 64)
+        bb_position_icon = {
+            "above_upper": "🔴 Above Upper (Overbought)",
+            "near_upper": "🟡 Near Upper (Extended)",
+            "middle": "⚪ Middle (Neutral)",
+            "near_lower": "🟡 Near Lower (Oversold)",
+            "below_lower": "🟢 Below Lower (Oversold)",
+        }.get(result.bb_position, "⚪ Middle")
+        output.append(f"   Upper:  {result.bb_upper:>10,.0f}")
+        output.append(f"   Middle: {result.bb_middle:>10,.0f}  {bb_position_icon}")
+        output.append(f"   Lower:  {result.bb_lower:>10,.0f}")
+        output.append("")
+
+    if result.vp_poc is not None:
+        output.append("━" * 64)
+        output.append("📊 VOLUME PROFILE")
+        output.append("━" * 64)
+        output.append(f"   POC (Point of Control): {result.vp_poc:>10,.0f}")
+        output.append(f"   Value Area High:        {result.vp_value_area_high:>10,.0f}")
+        output.append(f"   Value Area Low:         {result.vp_value_area_low:>10,.0f}")
+
+        if result.vp_value_area_high and result.vp_value_area_low:
+            price_in_va = (
+                result.vp_value_area_low
+                <= result.current_price
+                <= result.vp_value_area_high
+            )
+            va_status = "Inside Value Area" if price_in_va else "Outside Value Area"
+            va_icon = "🟢" if price_in_va else "🟡"
+            output.append(f"   Current Position:       {va_icon} {va_status}")
+        output.append("")
+
     # Trend and recommendation
     output.append("━" * 64)
     trend_icon = (
@@ -262,6 +297,22 @@ def export_to_json(result, filepath: str):
             }
             for r in result.resistance_levels
         ],
+        "bollinger_bands": {
+            "middle": result.bb_middle,
+            "upper": result.bb_upper,
+            "lower": result.bb_lower,
+            "position": result.bb_position,
+        }
+        if result.bb_middle is not None
+        else None,
+        "volume_profile": {
+            "poc": result.vp_poc,
+            "value_area_high": result.vp_value_area_high,
+            "value_area_low": result.vp_value_area_low,
+            "total_volume": result.vp_total_volume,
+        }
+        if result.vp_poc is not None
+        else None,
     }
 
     with open(filepath, "w") as f:

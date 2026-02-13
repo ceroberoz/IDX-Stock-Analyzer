@@ -43,6 +43,14 @@ class AnalysisResult:
     sma_20: float
     sma_50: float
     sma_200: Optional[float]
+    bb_middle: Optional[float] = None
+    bb_upper: Optional[float] = None
+    bb_lower: Optional[float] = None
+    bb_position: Optional[str] = None
+    vp_poc: Optional[float] = None
+    vp_value_area_high: Optional[float] = None
+    vp_value_area_low: Optional[float] = None
+    vp_total_volume: Optional[float] = None
     market_cap: Optional[float] = None
     pe_ratio: Optional[float] = None
     dividend_yield: Optional[float] = None
@@ -112,6 +120,102 @@ class IDXAnalyzer:
                 else pd.Series([])
             )
         return self.hist["Close"].rolling(window=window).mean()
+
+    def _calculate_bollinger_bands(
+        self, window: int = 20, num_std: float = 2.0
+    ) -> Tuple[pd.Series, pd.Series, pd.Series]:
+        """
+        Calculate Bollinger Bands
+
+        Args:
+            window: Period for moving average (default 20)
+            num_std: Number of standard deviations (default 2.0)
+
+        Returns:
+            Tuple of (middle_band, upper_band, lower_band)
+        """
+        if self.hist is None or len(self.hist) < window:
+            middle = (
+                pd.Series([self.hist["Close"].iloc[-1]] * len(self.hist))
+                if self.hist is not None
+                else pd.Series([])
+            )
+            return middle, middle, middle
+
+        middle = self.hist["Close"].rolling(window=window).mean()
+        std = self.hist["Close"].rolling(window=window).std()
+        upper = middle + (std * num_std)
+        lower = middle - (std * num_std)
+        return middle, upper, lower
+
+    def _calculate_volume_profile(
+        self, num_bins: int = 50
+    ) -> Tuple[Optional[float], Optional[float], Optional[float], Optional[float]]:
+        if self.hist is None or len(self.hist) < 20:
+            return None, None, None, None
+
+        price_low = self.hist["Low"].min()
+        price_high = self.hist["High"].max()
+
+        if price_high == price_low:
+            return price_low, price_low, price_low, float(self.hist["Volume"].sum())
+
+        bins = np.linspace(price_low, price_high, num_bins + 1)
+        bin_centers = (bins[:-1] + bins[1:]) / 2
+        volume_by_bin = np.zeros(num_bins)
+
+        for i in range(len(self.hist)):
+            row = self.hist.iloc[i]
+            candle_low = row["Low"]
+            candle_high = row["High"]
+            candle_volume = row["Volume"]
+
+            low_bin_idx = np.searchsorted(bins, candle_low, side="left") - 1
+            high_bin_idx = np.searchsorted(bins, candle_high, side="right") - 1
+
+            low_bin_idx = max(0, min(low_bin_idx, num_bins - 1))
+            high_bin_idx = max(0, min(high_bin_idx, num_bins - 1))
+
+            if low_bin_idx == high_bin_idx:
+                volume_by_bin[low_bin_idx] += candle_volume
+            else:
+                bins_in_range = high_bin_idx - low_bin_idx + 1
+                volume_per_bin = candle_volume / bins_in_range
+                for j in range(low_bin_idx, high_bin_idx + 1):
+                    volume_by_bin[j] += volume_per_bin
+
+        total_volume = volume_by_bin.sum()
+        if total_volume == 0:
+            return None, None, None, None
+
+        poc_idx = np.argmax(volume_by_bin)
+        poc = bin_centers[poc_idx]
+
+        sorted_indices = np.argsort(volume_by_bin)[::-1]
+        cumulative_volume = 0
+        value_area_indices = []
+        target_volume = total_volume * 0.70
+
+        for idx in sorted_indices:
+            cumulative_volume += volume_by_bin[idx]
+            value_area_indices.append(idx)
+            if cumulative_volume >= target_volume:
+                break
+
+        if value_area_indices:
+            value_area_low_idx = min(value_area_indices)
+            value_area_high_idx = max(value_area_indices)
+            value_area_low = bins[value_area_low_idx]
+            value_area_high = (
+                bins[value_area_high_idx + 1]
+                if value_area_high_idx + 1 < len(bins)
+                else bins[value_area_high_idx]
+            )
+        else:
+            value_area_low = price_low
+            value_area_high = price_high
+
+        return poc, value_area_high, value_area_low, total_volume
 
     def _find_support_levels(self) -> List[SupportResistance]:
         """Find key support levels"""
@@ -303,6 +407,37 @@ class IDXAnalyzer:
             else None
         )
 
+        bb_middle_series, bb_upper_series, bb_lower_series = (
+            self._calculate_bollinger_bands(20, 2.0)
+        )
+        bb_middle = (
+            float(bb_middle_series.iloc[-1]) if len(bb_middle_series) > 0 else current
+        )
+        bb_upper = (
+            float(bb_upper_series.iloc[-1])
+            if len(bb_upper_series) > 0
+            else current * 1.02
+        )
+        bb_lower = (
+            float(bb_lower_series.iloc[-1])
+            if len(bb_lower_series) > 0
+            else current * 0.98
+        )
+
+        bb_band_width = bb_upper - bb_lower
+        bb_position = "middle"
+        if bb_band_width > 0:
+            if current > bb_upper:
+                bb_position = "above_upper"
+            elif current > bb_upper - bb_band_width * 0.2:
+                bb_position = "near_upper"
+            elif current < bb_lower:
+                bb_position = "below_lower"
+            elif current < bb_lower + bb_band_width * 0.2:
+                bb_position = "near_lower"
+
+        vp_poc, vp_va_high, vp_va_low, vp_total = self._calculate_volume_profile(50)
+
         supports = self._find_support_levels()
         resistances = self._find_resistance_levels()
         trend = self._determine_trend(current_rsi, sma_20, sma_50, sma_200)
@@ -328,6 +463,14 @@ class IDXAnalyzer:
             sma_20=sma_20,
             sma_50=sma_50,
             sma_200=sma_200,
+            bb_middle=bb_middle,
+            bb_upper=bb_upper,
+            bb_lower=bb_lower,
+            bb_position=bb_position,
+            vp_poc=vp_poc,
+            vp_value_area_high=vp_va_high,
+            vp_value_area_low=vp_va_low,
+            vp_total_volume=vp_total,
             market_cap=self.info.get("marketCap") if self.info else None,
             pe_ratio=self.info.get("trailingPE") if self.info else None,
             dividend_yield=self.info.get("dividendYield") if self.info else None,
@@ -356,10 +499,10 @@ class IDXAnalyzer:
             output_path = f"{self.ticker.replace('.JK', '')}_chart.png"
 
         result = self.analyze()
-        fig = plt.figure(figsize=(14, 10), layout="constrained")
-        gs = fig.add_gridspec(3, 1, height_ratios=[4, 1, 1])
+        fig = plt.figure(figsize=(16, 10), layout="constrained")
+        gs = fig.add_gridspec(3, 2, height_ratios=[4, 1, 1], width_ratios=[5, 1])
 
-        ax1 = fig.add_subplot(gs[0])
+        ax1 = fig.add_subplot(gs[0, 0])
         ax1.set_title(
             f"{result.ticker} Technical Analysis", fontsize=16, fontweight="bold"
         )
@@ -400,6 +543,37 @@ class IDXAnalyzer:
                 color="#EF4444",
                 linewidth=1.5,
                 alpha=0.8,
+            )
+
+        if len(self.hist) >= 20:
+            bb_middle_series, bb_upper_series, bb_lower_series = (
+                self._calculate_bollinger_bands(20, 2.0)
+            )
+            ax1.plot(
+                self.hist.index,
+                bb_upper_series,
+                label="BB Upper",
+                color="#94A3B8",
+                linewidth=1.0,
+                alpha=0.6,
+                linestyle="--",
+            )
+            ax1.plot(
+                self.hist.index,
+                bb_lower_series,
+                label="BB Lower",
+                color="#94A3B8",
+                linewidth=1.0,
+                alpha=0.6,
+                linestyle="--",
+            )
+            ax1.fill_between(
+                self.hist.index,
+                bb_upper_series,
+                bb_lower_series,
+                alpha=0.05,
+                color="#94A3B8",
+                label="BB Band",
             )
 
         ax1.legend(loc="upper left", fontsize=9)
@@ -553,10 +727,10 @@ class IDXAnalyzer:
                 fontweight="bold",
             )
 
-        ax2 = fig.add_subplot(gs[1], sharex=ax1)
+        ax2 = fig.add_subplot(gs[1, 0], sharex=ax1)
         ax2.bar(self.hist.index, self.hist["Volume"], color="gray", alpha=0.5)
 
-        ax3 = fig.add_subplot(gs[2], sharex=ax1)
+        ax3 = fig.add_subplot(gs[2, 0], sharex=ax1)
         rsi = self._calculate_rsi()
         ax3.plot(self.hist.index, rsi, color="#8B5CF6", label="RSI(14)")
         ax3.axhline(y=70, color="red", linestyle="--", alpha=0.5)
@@ -585,6 +759,74 @@ class IDXAnalyzer:
             alpha=0.7,
             fontweight="bold",
         )
+
+        if result.vp_poc is not None and len(self.hist) >= 20:
+            ax_vp = fig.add_subplot(gs[0, 1], sharey=ax1)
+
+            price_low = self.hist["Low"].min()
+            price_high = self.hist["High"].max()
+            num_bins = 50
+            bins = np.linspace(price_low, price_high, num_bins + 1)
+            bin_centers = (bins[:-1] + bins[1:]) / 2
+            volume_by_bin = np.zeros(num_bins)
+
+            for i in range(len(self.hist)):
+                row = self.hist.iloc[i]
+                candle_low = row["Low"]
+                candle_high = row["High"]
+                candle_volume = row["Volume"]
+
+                low_bin_idx = np.searchsorted(bins, candle_low, side="left") - 1
+                high_bin_idx = np.searchsorted(bins, candle_high, side="right") - 1
+
+                low_bin_idx = max(0, min(low_bin_idx, num_bins - 1))
+                high_bin_idx = max(0, min(high_bin_idx, num_bins - 1))
+
+                if low_bin_idx == high_bin_idx:
+                    volume_by_bin[low_bin_idx] += candle_volume
+                else:
+                    bins_in_range = high_bin_idx - low_bin_idx + 1
+                    volume_per_bin = candle_volume / bins_in_range
+                    for j in range(low_bin_idx, high_bin_idx + 1):
+                        volume_by_bin[j] += volume_per_bin
+
+            max_vol = volume_by_bin.max()
+            colors = [
+                "#3B82F6"
+                if abs(bc - result.vp_poc) < (price_high - price_low) / num_bins * 2
+                else "#94A3B8"
+                for bc in bin_centers
+            ]
+
+            ax_vp.barh(
+                bin_centers,
+                volume_by_bin,
+                height=(price_high - price_low) / num_bins * 0.8,
+                color=colors,
+                alpha=0.7,
+            )
+            ax_vp.axhline(
+                y=result.vp_poc,
+                color="#EF4444",
+                linewidth=2,
+                linestyle="-",
+                label=f"POC: {result.vp_poc:,.0f}",
+            )
+
+            if result.vp_value_area_high and result.vp_value_area_low:
+                ax_vp.axhspan(
+                    result.vp_value_area_low,
+                    result.vp_value_area_high,
+                    alpha=0.1,
+                    color="blue",
+                    label="Value Area",
+                )
+
+            ax_vp.set_xlabel("Volume", fontsize=9)
+            ax_vp.set_title("Volume Profile", fontsize=10, fontweight="bold")
+            ax_vp.legend(loc="upper right", fontsize=8)
+            ax_vp.tick_params(axis="y", labelleft=False)
+            ax_vp.set_xlim(0, max_vol * 1.2)
 
         info_text = f"Price: {result.current_price:,.0f} | RSI: {result.rsi:.1f} | {result.recommendation}"
         fig.text(

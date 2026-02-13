@@ -18,12 +18,24 @@ A powerful, user-friendly command-line tool for technical analysis of Indonesian
 - 📈 **Enhanced Technical Charts** - Publication-ready charts with:
   - Support/Resistance levels
   - Moving averages (SMA 20/50/200)
+  - **Bollinger Bands** (20-period, 2σ)
+  - **Volume Profile** (POC, Value Area)
   - RSI indicator with overbought/oversold zones
   - Insight box with trend analysis
   - Visual buy/sell zones
 - 📁 **Export Options** - Save analysis to CSV or JSON for further processing
 - ⚡ **Fast & Lightweight** - Minimal dependencies, quick execution
 - 🎨 **Beautiful CLI Output** - Color-coded, easy-to-read terminal output
+
+---
+
+## 📈 Chart Output Example
+
+<p align="center">
+  <img src="docs/bbca_analysis.png" alt="BBCA Technical Analysis Chart" width="800">
+</p>
+
+*Example chart showing BBCA (Bank Central Asia) with Bollinger Bands, Volume Profile, SMA lines, RSI indicator, and support/resistance levels.*
 
 ---
 
@@ -381,8 +393,8 @@ This project is licensed under the **MIT License** - see [LICENSE](LICENSE) file
 
 ## 🗺️ Roadmap
 
-- [ ] Add Bollinger Bands indicator
-- [ ] Volume profile analysis
+- [x] Add Bollinger Bands indicator ✅
+- [x] Volume profile analysis ✅
 - [ ] Backtesting module
 - [ ] Web interface
 - [ ] Price alerts (email/webhook)
