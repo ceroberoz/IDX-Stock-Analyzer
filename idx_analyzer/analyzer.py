@@ -616,7 +616,9 @@ class IDXAnalyzer:
 
             cfg = self.config.chart
             fig = plt.figure(figsize=(cfg.width, cfg.height), layout="constrained")
-            gs = fig.add_gridspec(3, 2, height_ratios=[4, 1, 1], width_ratios=[5, 1])
+            gs = fig.add_gridspec(
+                4, 2, height_ratios=[4, 0.8, 1, 1], width_ratios=[5, 1]
+            )
 
             ax1 = fig.add_subplot(gs[0, 0])
             ax1.set_title(
@@ -756,14 +758,16 @@ class IDXAnalyzer:
             else:
                 insight_text += "\n[WAIT]\nNo clear signal"
 
-            ax1.text(
-                0.02,
-                0.02,
+            ax_insight = fig.add_subplot(gs[1, :])
+            ax_insight.axis("off")
+            ax_insight.text(
+                0.5,
+                0.5,
                 insight_text,
-                transform=ax1.transAxes,
-                fontsize=9,
-                verticalalignment="bottom",
-                horizontalalignment="left",
+                transform=ax_insight.transAxes,
+                fontsize=10,
+                verticalalignment="center",
+                horizontalalignment="center",
                 bbox=dict(
                     boxstyle="round,pad=0.5",
                     facecolor="white",
@@ -847,10 +851,10 @@ class IDXAnalyzer:
                     fontweight="bold",
                 )
 
-            ax2 = fig.add_subplot(gs[1, 0], sharex=ax1)
+            ax2 = fig.add_subplot(gs[2, 0], sharex=ax1)
             ax2.bar(self.hist.index, self.hist["Volume"], color="gray", alpha=0.5)
 
-            ax3 = fig.add_subplot(gs[2, 0], sharex=ax1)
+            ax3 = fig.add_subplot(gs[3, 0], sharex=ax1)
             rsi = self._calculate_rsi()
             ax3.plot(self.hist.index, rsi, color="#8B5CF6", label="RSI(14)")
             ax3.axhline(y=70, color="red", linestyle="--", alpha=0.5)
