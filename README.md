@@ -50,7 +50,7 @@ A powerful, user-friendly command-line tool for technical analysis of Indonesian
 
 ```bash
 # Clone the repository
-git clone https://github.com/ceroberoz/idx-analyzer.git
+git clone https://github.com/ceroberoz/IDX-Stock-Analyzer.git
 cd idx-analyzer
 
 # Install dependencies using UV
@@ -293,7 +293,7 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 
 ```bash
 # Clone repo
-git clone https://github.com/ceroberoz/idx-analyzer.git
+git clone https://github.com/ceroberoz/IDX-Stock-Analyzer.git
 cd idx-analyzer
 
 # Install with dev dependencies
@@ -386,8 +386,8 @@ This project is licensed under the **MIT License** - see [LICENSE](LICENSE) file
 
 ## 💬 Support & Community
 
-- **Issues**: [GitHub Issues](https://github.com/ceroberoz/idx-analyzer/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/ceroberoz/idx-analyzer/discussions)
+- **Issues**: [GitHub Issues](https://github.com/ceroberoz/IDX-Stock-Analyzer/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/ceroberoz/IDX-Stock-Analyzer/discussions)
 
 ---
 
