@@ -25,7 +25,8 @@ A powerful, user-friendly command-line tool for technical analysis of Indonesian
   - Visual buy/sell zones
 - 📁 **Export Options** - Save analysis to CSV or JSON for further processing
 - ⚡ **Fast & Lightweight** - Minimal dependencies, quick execution
-- 🎨 **Beautiful CLI Output** - Color-coded, easy-to-read terminal output
+- 🎨 **Modern & Playful UI** - Beautiful dashboard with "Cool" narrative and emoji-rich insights
+- 📱 **Chat-Ready Reports** - Generate instant, formatted summaries for Telegram/WhatsApp with `--chat`
 
 ---
 
@@ -148,6 +149,29 @@ The generated chart includes an **Insight Box** (upper right) showing:
   - **[OVERBOUGHT]** - RSI > 70
   - **[OVERSOLD]** - RSI < 30
 
+### 📱 Chat Reports
+
+Generate instant, copy-paste ready summaries for messaging apps:
+
+```
+📊 PTRO Daily Update
+🟢 Price: 7,450 (-0.00%)
+🌊 Trend: 💤 Neutral
+
+📉 Tech Stats:
+• RSI: 42.3
+• Vol: 35.5M
+
+🎯 Key Levels:
+• 🧱 Res: 7,500
+• 🛡️ Sup: 7,400
+
+💡 Outlook:
+Range-bound (7,400 - 7,500).
+
+🚨 Action: WAIT
+```
+
 ---
 
 ## 🛠️ Command Reference
@@ -165,6 +189,7 @@ uv run idx-analyzer <TICKER> [OPTIONS]
 | `--output` | `-o` | Custom output filename | `--output my_analysis.json` |
 | `--chart` | `-c` | Generate technical chart | `--chart` |
 | `--chart-output` | | Custom chart filename | `--chart-output bbc.png` |
+| `--chat` | | Generate compact chat report | `--chat` |
 | `--config` | | Custom configuration file | `--config myconfig.toml` |
 | `--init-config` | | Create default config file | `--init-config` |
 | `--quiet` | `-q` | Minimal output for scripting | `--quiet` |

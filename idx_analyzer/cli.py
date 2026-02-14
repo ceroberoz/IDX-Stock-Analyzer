@@ -8,15 +8,15 @@ from pathlib import Path
 from typing import Optional
 
 from .analyzer import IDXAnalyzer
-from .config import Config, load_config, create_default_config
+from .config import Config, create_default_config, load_config
 from .exceptions import (
-    IDXAnalyzerError,
-    format_error_for_user,
-    InvalidTickerError,
-    NetworkError,
-    InsufficientDataError,
     AnalysisError,
     ChartError,
+    IDXAnalyzerError,
+    InsufficientDataError,
+    InvalidTickerError,
+    NetworkError,
+    format_error_for_user,
 )
 
 
@@ -76,6 +76,12 @@ Examples:
     parser.add_argument(
         "--chart-output",
         help="Custom chart output filename (default: TICKER_chart.png)",
+    )
+
+    parser.add_argument(
+        "--chat",
+        action="store_true",
+        help="Generate compact output for Telegram/WhatsApp",
     )
 
     parser.add_argument(
@@ -221,7 +227,13 @@ def format_output(result, quiet: bool = False) -> str:
         output.append("")
 
     output.append("-" * 64)
-    trend_icon = "BULL" if "Bull" in result.trend else "BEAR" if "Bear" in result.trend else "NEUTRAL"
+    trend_icon = (
+        "BULL"
+        if "Bull" in result.trend
+        else "BEAR"
+        if "Bear" in result.trend
+        else "NEUTRAL"
+    )
     output.append(f"Trend: {trend_icon} {result.trend}")
     output.append("")
     output.append("RECOMMENDATION:")
@@ -376,7 +388,21 @@ def main(args: Optional[list] = None) -> int:
             else:
                 export_to_json(result, filepath)
 
-        print(format_output(result, quiet=parsed_args.quiet))
+        if parsed_args.chat:
+            print(analyzer.generate_chat_report(result))
+            return 0
+
+        if not parsed_args.quiet:
+            try:
+                from rich.console import Console
+
+                console = Console()
+                report = analyzer.generate_rich_report(result)
+                console.print(report)
+            except ImportError:
+                print(format_output(result, quiet=False))
+        else:
+            print(format_output(result, quiet=True))
 
         return 0
 

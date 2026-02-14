@@ -604,80 +604,329 @@ class IDXAnalyzer:
         nearest_resistance: float,
         risk_reward: float,
     ) -> str:
-        """Generate narrative text based on analysis results"""
+        """Generate playful, emoji-rich narrative text"""
         current = result.current_price
         rsi = result.rsi
         trend = result.trend
-        sections = [f"{trend_emoji} {result.ticker} @ {current:,.0f}"]
 
+        # 1. Headline
+        headline_icon = "💎"
+        if "Bull" in trend:
+            headline_icon = "🚀"
+        elif "Bear" in trend:
+            headline_icon = "🐻"
+
+        sections = [f"{headline_icon} {result.ticker} @ {current:,.0f}"]
+
+        # 2. Price Context
         from_low = (current - result.week_52_low) / result.week_52_low * 100
         from_high = (current - result.week_52_high) / result.week_52_high * 100
 
         if "Bull" in trend:
-            price_ctx = f"Trading +{from_low:.1f}% above 52W low"
+            price_ctx = f"🎢 Climbing! +{from_low:.1f}% from the bottom"
             if from_high > -20:
-                price_ctx += f", {-from_high:.1f}% below 52W high"
+                price_ctx += f", almost at the peak! ({-from_high:.1f}% to go)"
         elif "Bear" in trend:
-            price_ctx = f"Trading {-from_high:.1f}% below 52W high"
-            if from_low > 20:
-                price_ctx += f", +{from_low:.1f}% above 52W low"
+            price_ctx = f"📉 Discount Mode: {-from_high:.1f}% off the highs"
         else:
-            price_ctx = f"Trading in middle of 52W range"
+            price_ctx = f"⚖️ Chilling in the middle of the range"
         sections.append(price_ctx)
 
+        # 3. Trend Analysis
         if "Golden Cross" in trend:
-            trend_text = "Strong uptrend: SMA 50 crossed above SMA 200"
+            trend_text = "✨ GOLDEN CROSS! SMA 50 > 200 (Bull Mode Activated)"
         elif "Death Cross" in trend:
-            trend_text = "Strong downtrend: SMA 50 crossed below SMA 200"
+            trend_text = "☠️ DEATH CROSS! SMA 50 < 200 (Bears are feasting)"
         elif "Bullish" in trend:
-            trend_text = "Price above key moving averages, bullish bias"
+            trend_text = "🐂 Bulls in Control: Price surfing above MAs"
         elif "Bearish" in trend:
-            trend_text = "Price below key moving averages, bearish bias"
+            trend_text = "🧊 Ice Cold: Price trapped below key MAs"
         else:
-            trend_text = "Mixed signals from moving averages"
+            trend_text = "🤷 Mixed Signals: Market is confused right now"
         sections.append(trend_text)
 
+        # 4. Momentum (RSI)
         if rsi > 70:
-            rsi_text = f"Overbought (RSI {rsi:.1f}) - Potential pullback"
+            rsi_text = f"🔥 Too Hot to Handle! (RSI {rsi:.1f}) - Pullback incoming?"
         elif rsi < 30:
-            rsi_text = f"Oversold (RSI {rsi:.1f}) - Potential bounce"
+            rsi_text = f"🥶 Deep Freeze (RSI {rsi:.1f}) - Bounce imminent?"
         elif 50 < rsi <= 70:
-            rsi_text = f"Bullish momentum (RSI {rsi:.1f})"
+            rsi_text = f"🔋 Charged Up (RSI {rsi:.1f}) - Bullish vibes"
         elif 30 <= rsi < 50:
-            rsi_text = f"Bearish momentum (RSI {rsi:.1f})"
+            rsi_text = f"🥀 Losing Steam (RSI {rsi:.1f}) - Bearish vibes"
         else:
-            rsi_text = f"Neutral momentum (RSI {rsi:.1f})"
+            rsi_text = f"😐 Neutral Zone (RSI {rsi:.1f}) - Waiting for a spark"
         sections.append(rsi_text)
 
+        # 5. Support/Resistance
         support_dist = (current - nearest_support) / current * 100
         resist_dist = (nearest_resistance - current) / current * 100
 
-        sr_text = f"Support at {nearest_support:,.0f} ({support_dist:.1f}% below)"
+        sr_text = f"🛡️ Safety Net: {nearest_support:,.0f} (-{support_dist:.1f}%)"
         if risk_reward > 0:
-            sr_text += f" | Target at {nearest_resistance:,.0f} (+{resist_dist:.1f}%, R/R 1:{risk_reward:.1f})"
+            sr_text += f" | 🧱 Wall: {nearest_resistance:,.0f} (+{resist_dist:.1f}%)"
+            sr_text += f"\n💰 Risk/Reward Ratio: 1:{risk_reward:.1f}"
         sections.append(sr_text)
 
+        # 6. Action
         if "Golden Cross" in trend and rsi < 70:
-            action = "BUY: Strong uptrend, consider dips to support"
+            action = "🚀 BUY SIGNAL: Trend is your friend, ride the wave!"
         elif "Death Cross" in trend and rsi > 30:
-            action = "SELL/AVOID: Downtrend active, wait for reversal"
+            action = "⛔ SELL/AVOID: Don't catch a falling knife"
         elif "Bull" in trend and rsi < 30:
-            action = "BUY: Bullish trend with oversold bounce setup"
+            action = "🛒 BUY THE DIP: Strong trend + Oversold = Opportunity"
         elif "Bear" in trend and rsi > 70:
-            action = "SELL: Bearish trend with overbought pullback"
+            action = "💸 SELL THE RALLY: Bear trend + Overbought = Trap"
         elif rsi > 75:
-            action = "REDUCE: Very overbought, consider taking profits"
+            action = "🤑 TAKE PROFITS: Market is screaming 'Too High!'"
         elif rsi < 25:
-            action = "WATCH: Very oversold, reversal may be near"
+            action = "👀 WATCH CLOSELY: Reversal could happen any second"
         elif "Bull" in trend:
-            action = "HOLD/BUY: Bullish trend, use support for entry"
+            action = "✊ HOLD/BUY: Stay long, add on support"
         elif "Bear" in trend:
-            action = "AVOID/HOLD: Bearish trend, wait for better entry"
+            action = "💤 AVOID/HOLD: Cash is king right now"
         else:
-            action = "WAIT: No clear directional bias"
+            action = "🍿 WAIT & WATCH: Let the market decide first"
         sections.append(f"Action: {action}")
 
         return "\n".join(sections)
+
+    def generate_rich_report(self, result: AnalysisResult):
+        """Generate a rich text narrative for CLI display"""
+        from rich import box
+        from rich.align import Align
+        from rich.columns import Columns
+        from rich.console import Group
+        from rich.panel import Panel
+        from rich.table import Table
+        from rich.text import Text
+
+        # 1. Header Section
+        change_color = "green" if result.change_percent >= 0 else "red"
+        price_text = Text(f"{result.current_price:,.0f}", style=f"bold {change_color}")
+        change_text = Text(f"{result.change_percent:+.2f}%", style=change_color)
+
+        header_grid = Table.grid(expand=True)
+        header_grid.add_column(justify="left")
+        header_grid.add_column(justify="right")
+        header_grid.add_row(
+            Text(
+                f"📊 Market Intel: {result.ticker}", style="bold white", justify="left"
+            ),
+            Text.assemble("Price: ", price_text, " (", change_text, ")"),
+        )
+
+        # 2. Trend & Momentum Section
+        trend_color = (
+            "green"
+            if "Bull" in result.trend
+            else "red"
+            if "Bear" in result.trend
+            else "yellow"
+        )
+
+        rsi_color = "red" if result.rsi > 70 else "green" if result.rsi < 30 else "blue"
+        rsi_status = (
+            "🔥 Overbought"
+            if result.rsi > 70
+            else "🥶 Oversold"
+            if result.rsi < 30
+            else "⚖️ Neutral"
+        )
+
+        metrics_table = Table(box=None, padding=(0, 2), expand=True)
+        metrics_table.add_column("🚀 Metric", style="cyan")
+        metrics_table.add_column("💎 Value", style="bold white")
+        metrics_table.add_column("🚦 Status", justify="right")
+
+        metrics_table.add_row(
+            "Trend", result.trend.split(" (")[0], Text(result.trend, style=trend_color)
+        )
+        metrics_table.add_row(
+            "RSI (14)", f"{result.rsi:.1f}", Text(f"{rsi_status}", style=rsi_color)
+        )
+
+        # Moving Averages
+        ma_status = []
+        if result.current_price > result.sma_20:
+            ma_status.append("[green]📈 >SMA20[/green]")
+        else:
+            ma_status.append("[red]📉 <SMA20[/red]")
+
+        if result.current_price > result.sma_50:
+            ma_status.append("[green]📈 >SMA50[/green]")
+        else:
+            ma_status.append("[red]📉 <SMA50[/red]")
+
+        if result.sma_200:
+            if result.current_price > result.sma_200:
+                ma_status.append("[green]📈 >SMA200[/green]")
+            else:
+                ma_status.append("[red]📉 <SMA200[/red]")
+
+        metrics_table.add_row("Mov. Avgs", ", ".join(ma_status), "")
+
+        # 3. Key Levels Section
+        levels_table = Table(
+            title="🧱 Support & Resistance Zones",
+            box=box.SIMPLE,
+            expand=True,
+            title_style="bold yellow",
+        )
+        levels_table.add_column("Type", style="cyan")
+        levels_table.add_column("Level", justify="right", style="bold white")
+        levels_table.add_column("Distance", justify="right")
+        levels_table.add_column("Strength", style="dim white")
+
+        # Supports
+        for s in result.support_levels[:2]:
+            dist = (result.current_price - s.level) / result.current_price * 100
+            levels_table.add_row(
+                "🛡️ Support",
+                f"{s.level:,.0f}",
+                f"[red]{dist:.1f}% below[/red]",
+                s.strength.capitalize(),
+            )
+
+        # Resistances
+        for r in result.resistance_levels[:2]:
+            dist = (r.level - result.current_price) / result.current_price * 100
+            levels_table.add_row(
+                "🧱 Resistance",
+                f"{r.level:,.0f}",
+                f"[green]+{dist:.1f}% above[/green]",
+                r.strength.capitalize(),
+            )
+
+        # 4. Recommendation Section
+        rec_color = "white"
+        rec_icon = "🤔"
+        if "BUY" in result.recommendation.upper():
+            rec_color = "bold green"
+            rec_icon = "🚀"
+        elif "SELL" in result.recommendation.upper():
+            rec_color = "bold red"
+            rec_icon = "💸"
+        elif "WAIT" in result.recommendation.upper():
+            rec_color = "yellow"
+            rec_icon = "🍿"
+
+        rec_panel = Panel(
+            Align.center(Text(f"{rec_icon} {result.recommendation}", style=rec_color)),
+            title="⚡ Action Plan",
+            border_style="blue",
+        )
+
+        # 5. Narrative Text (re-using logic but formatted)
+        narrative_text = Text()
+        if "Bull" in result.trend:
+            narrative_text.append("🐂 Bullish Vibes Detected! ", style="green")
+            narrative_text.append("Buyers are in control. ", style="dim white")
+        elif "Bear" in result.trend:
+            narrative_text.append("🐻 Bearish Grip! ", style="red")
+            narrative_text.append("Sellers are dominating. ", style="dim white")
+        else:
+            narrative_text.append("🦀 Crab Market! ", style="yellow")
+            narrative_text.append("Sideways chop, be careful. ", style="dim white")
+
+        if result.rsi > 70:
+            narrative_text.append(
+                "\n⚠️ Warning: Market is overheated (Overbought). Expect turbulence! ",
+                style="bold red",
+            )
+        elif result.rsi < 30:
+            narrative_text.append(
+                "\n💎 Opportunity: Market is on sale (Oversold). Bargain hunting time? ",
+                style="bold green",
+            )
+
+        nearest_s = (
+            max([s.level for s in result.support_levels])
+            if result.support_levels
+            else 0
+        )
+        nearest_r = (
+            min([r.level for r in result.resistance_levels])
+            if result.resistance_levels
+            else 0
+        )
+
+        if nearest_s and nearest_r:
+            risk = result.current_price - nearest_s
+            reward = nearest_r - result.current_price
+            if risk > 0:
+                rr_ratio = reward / risk
+                narrative_text.append(
+                    f"\n🎲 Risk/Reward Ratio: 1:{rr_ratio:.1f}", style="cyan"
+                )
+
+        # Assemble the full report
+        main_group = Group(
+            Panel(header_grid, style="blue"),
+            metrics_table,
+            levels_table,
+            narrative_text,
+            rec_panel,
+        )
+
+        return main_group
+
+    def generate_chat_report(self, result: AnalysisResult) -> str:
+        """Generate a compact, emoji-rich summary for chat apps (Telegram/WhatsApp)"""
+
+        # 1. Determine Icons
+        trend_icon = (
+            "🚀" if "Bull" in result.trend else "🐻" if "Bear" in result.trend else "💤"
+        )
+        if "Golden Cross" in result.trend:
+            trend_icon = "✨🚀"
+        if "Death Cross" in result.trend:
+            trend_icon = "☠️🐻"
+
+        change_icon = "🟢" if result.change_percent >= 0 else "🔴"
+
+        # 2. Key Levels
+        s_level = (
+            max([s.level for s in result.support_levels])
+            if result.support_levels
+            else 0
+        )
+        r_level = (
+            min([r.level for r in result.resistance_levels])
+            if result.resistance_levels
+            else 0
+        )
+
+        # 3. Action Signal
+        action = "WAIT"
+        if "BUY" in result.recommendation.upper():
+            action = "BUY 🟢"
+        elif "SELL" in result.recommendation.upper():
+            action = "SELL 🔴"
+        elif "HOLD" in result.recommendation.upper():
+            action = "HOLD ✊"
+
+        # 4. Construct Message
+        lines = [
+            f"📊 *{result.ticker} Daily Update*",
+            f"{change_icon} Price: {result.current_price:,.0f} ({result.change_percent:+.2f}%)",
+            f"🌊 Trend: {trend_icon} {result.trend.split(' (')[0]}",
+            "",
+            f"📉 *Tech Stats:*",
+            f"• RSI: {result.rsi:.1f}",
+            f"• Vol: {result.volume / 1e6:.1f}M",
+            "",
+            f"🎯 *Key Levels:*",
+            f"• 🧱 Res: {r_level:,.0f}" if r_level else "• 🧱 Res: -",
+            f"• 🛡️ Sup: {s_level:,.0f}" if s_level else "• 🛡️ Sup: -",
+            "",
+            f"💡 *Outlook:*",
+            f"{result.recommendation}",
+            "",
+            f"🚨 *Action:* {action}",
+        ]
+
+        return "\n".join(lines)
 
     def generate_chart(
         self, output_path: Optional[str] = None, show: bool = False
@@ -698,11 +947,17 @@ class IDXAnalyzer:
                 output_path = f"{self.ticker.replace('.JK', '')}_chart.png"
 
             cfg = self.config.chart
-            fig = plt.figure(figsize=(cfg.width, cfg.height), layout="constrained")
-            gs = fig.add_gridspec(
-                4, 2, height_ratios=[4, 0.8, 1, 1], width_ratios=[5, 1]
+            # Wider layout for dashboard style
+            fig = plt.figure(
+                figsize=(cfg.width * 1.2, cfg.height), layout="constrained"
             )
 
+            # Dashboard Grid: 3 Rows, 2 Columns
+            # Rows: Price (3), Volume (1), RSI (1)
+            # Cols: Main Charts (4), Side Panel (1)
+            gs = fig.add_gridspec(3, 2, height_ratios=[3, 1, 1], width_ratios=[4, 1])
+
+            # --- Main Price Chart (Top Left) ---
             ax1 = fig.add_subplot(gs[0, 0])
             ax1.set_title(
                 f"{result.ticker} Technical Analysis",
@@ -783,65 +1038,7 @@ class IDXAnalyzer:
 
             ax1.legend(loc="upper left", fontsize=9)
 
-            trend_color = (
-                "#22c55e"
-                if "Bull" in result.trend
-                else "#ef4444"
-                if "Bear" in result.trend
-                else "#f59e0b"
-            )
-            trend_emoji = (
-                "BULL"
-                if "Bull" in result.trend
-                else "BEAR"
-                if "Bear" in result.trend
-                else "NEUTRAL"
-            )
-
-            nearest_support = (
-                max([s.level for s in result.support_levels])
-                if result.support_levels
-                else result.current_price * 0.95
-            )
-            nearest_resistance = (
-                min([r.level for r in result.resistance_levels])
-                if result.resistance_levels
-                else result.current_price * 1.05
-            )
-            risk_reward = (
-                (nearest_resistance - result.current_price)
-                / (result.current_price - nearest_support)
-                if nearest_support < result.current_price
-                else 0
-            )
-
-            # Generate narrative based on analysis
-            narrative = self._generate_narrative(
-                result, trend_emoji, nearest_support, nearest_resistance, risk_reward
-            )
-
-            insight_text = narrative
-
-            ax_insight = fig.add_subplot(gs[1, :])
-            ax_insight.axis("off")
-            ax_insight.text(
-                0.5,
-                0.5,
-                insight_text,
-                transform=ax_insight.transAxes,
-                fontsize=10,
-                verticalalignment="center",
-                horizontalalignment="center",
-                bbox=dict(
-                    boxstyle="round,pad=0.5",
-                    facecolor="white",
-                    edgecolor=trend_color,
-                    linewidth=2,
-                    alpha=0.95,
-                ),
-                family="monospace",
-            )
-
+            # --- Buy/Sell Zones on Price Chart ---
             if result.support_levels and result.resistance_levels:
                 strong_supports = [
                     s.level
@@ -859,15 +1056,6 @@ class IDXAnalyzer:
                             color="green",
                             label="Buy Zone",
                         )
-                        ax1.text(
-                            self.hist.index[int(len(self.hist) * 0.02)],
-                            (buy_zone_top + buy_zone_bottom) / 2,
-                            " BUY",
-                            color="green",
-                            fontsize=8,
-                            va="center",
-                            alpha=0.7,
-                        )
 
                 strong_resistances = [
                     r.level
@@ -884,15 +1072,6 @@ class IDXAnalyzer:
                             alpha=0.1,
                             color="red",
                             label="Target Zone",
-                        )
-                        ax1.text(
-                            self.hist.index[int(len(self.hist) * 0.02)],
-                            (sell_zone_top + sell_zone_bottom) / 2,
-                            " TARGET",
-                            color="red",
-                            fontsize=8,
-                            va="center",
-                            alpha=0.7,
                         )
 
             for s in result.support_levels[:2]:
@@ -915,39 +1094,7 @@ class IDXAnalyzer:
                     fontweight="bold",
                 )
 
-            ax2 = fig.add_subplot(gs[2, 0], sharex=ax1)
-            ax2.bar(self.hist.index, self.hist["Volume"], color="gray", alpha=0.5)
-
-            ax3 = fig.add_subplot(gs[3, 0], sharex=ax1)
-            rsi = self._calculate_rsi()
-            ax3.plot(self.hist.index, rsi, color="#8B5CF6", label="RSI(14)")
-            ax3.axhline(y=70, color="red", linestyle="--", alpha=0.5)
-            ax3.axhline(y=30, color="green", linestyle="--", alpha=0.5)
-            ax3.set_ylim(0, 100)
-            ax3.set_ylabel("RSI", fontsize=9)
-
-            ax3.axhspan(70, 100, alpha=0.1, color="red")
-            ax3.axhspan(0, 30, alpha=0.1, color="green")
-
-            ax3.text(
-                self.hist.index[int(len(self.hist) * 0.02)],
-                85,
-                "OVERBOUGHT (SELL)",
-                fontsize=8,
-                color="red",
-                alpha=0.7,
-                fontweight="bold",
-            )
-            ax3.text(
-                self.hist.index[int(len(self.hist) * 0.02)],
-                15,
-                "OVERSOLD (BUY)",
-                fontsize=8,
-                color="green",
-                alpha=0.7,
-                fontweight="bold",
-            )
-
+            # --- Volume Profile (Top Right) ---
             if result.vp_poc is not None and len(self.hist) >= 20:
                 ax_vp = fig.add_subplot(gs[0, 1], sharey=ax1)
 
@@ -1012,18 +1159,109 @@ class IDXAnalyzer:
 
                 ax_vp.set_xlabel("Volume", fontsize=9)
                 ax_vp.set_title("Volume Profile", fontsize=10, fontweight="bold")
-                ax_vp.legend(loc="upper right", fontsize=8)
+                # ax_vp.legend(loc="upper right", fontsize=8) # Too crowded
                 ax_vp.tick_params(axis="y", labelleft=False)
                 ax_vp.set_xlim(0, max_vol * 1.2)
+            else:
+                # Placeholder if no VP data
+                ax_vp = fig.add_subplot(gs[0, 1])
+                ax_vp.axis("off")
 
-            info_text = f"Price: {result.current_price:,.0f} | RSI: {result.rsi:.1f} | {result.recommendation}"
+            # --- Volume Bars (Middle Left) ---
+            ax2 = fig.add_subplot(gs[1, 0], sharex=ax1)
+            ax2.bar(self.hist.index, self.hist["Volume"], color="gray", alpha=0.5)
+            ax2.set_ylabel("Volume", fontsize=9)
+            ax2.grid(True, alpha=0.3)
+
+            # --- RSI (Bottom Left) ---
+            ax3 = fig.add_subplot(gs[2, 0], sharex=ax1)
+            rsi = self._calculate_rsi()
+            ax3.plot(self.hist.index, rsi, color="#8B5CF6", label="RSI(14)")
+            ax3.axhline(y=70, color="red", linestyle="--", alpha=0.5)
+            ax3.axhline(y=30, color="green", linestyle="--", alpha=0.5)
+            ax3.set_ylim(0, 100)
+            ax3.set_ylabel("RSI", fontsize=9)
+
+            ax3.axhspan(70, 100, alpha=0.1, color="red")
+            ax3.axhspan(0, 30, alpha=0.1, color="green")
+
+            # Hide x-labels for top plots to clean up
+            plt.setp(ax1.get_xticklabels(), visible=False)
+            plt.setp(ax2.get_xticklabels(), visible=False)
+
+            # --- Analysis Card (Bottom Right - spanning 2 rows) ---
+            ax_insight = fig.add_subplot(gs[1:, 1])
+            ax_insight.axis("off")
+
+            trend_color = (
+                "#22c55e"
+                if "Bull" in result.trend
+                else "#ef4444"
+                if "Bear" in result.trend
+                else "#f59e0b"
+            )
+            trend_emoji = (
+                "BULL"
+                if "Bull" in result.trend
+                else "BEAR"
+                if "Bear" in result.trend
+                else "NEUTRAL"
+            )
+
+            nearest_support = (
+                max([s.level for s in result.support_levels])
+                if result.support_levels
+                else result.current_price * 0.95
+            )
+            nearest_resistance = (
+                min([r.level for r in result.resistance_levels])
+                if result.resistance_levels
+                else result.current_price * 1.05
+            )
+            risk_reward = (
+                (nearest_resistance - result.current_price)
+                / (result.current_price - nearest_support)
+                if nearest_support < result.current_price
+                else 0
+            )
+
+            narrative = self._generate_narrative(
+                result, trend_emoji, nearest_support, nearest_resistance, risk_reward
+            )
+
+            # Format narrative for the side panel
+            # Breaking lines manually for the narrow column
+            formatted_narrative = narrative.replace(" | ", "\n").replace(". ", ".\n")
+
+            # Add box
+            ax_insight.text(
+                0.5,
+                0.5,
+                formatted_narrative,
+                transform=ax_insight.transAxes,
+                fontsize=9,
+                verticalalignment="center",
+                horizontalalignment="center",
+                bbox=dict(
+                    boxstyle="round,pad=0.8",
+                    facecolor="#f8fafc",
+                    edgecolor=trend_color,
+                    linewidth=2,
+                    alpha=0.95,
+                ),
+                family="monospace",
+                wrap=True,
+            )
+
+            # Footer
             fig.text(
                 0.5,
-                0.02,
-                info_text,
+                0.01,
+                f"Analysis generated by IDX Analyzer on {time.strftime('%Y-%m-%d')}",
                 ha="center",
-                fontsize=11,
-                bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
+                fontsize=8,
+                color="gray",
+                style="italic",
             )
 
             plt.savefig(output_path, dpi=cfg.dpi)

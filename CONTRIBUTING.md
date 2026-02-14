@@ -126,6 +126,7 @@ Before submitting a PR, test:
 - [ ] Chart generation works: `uv run idx-analyzer BBCA --chart`
 - [ ] All periods work: `--period 1mo`, `--period 6mo`, `--period 1y`
 - [ ] Export works: `--export csv`, `--export json`
+- [ ] Chat output works: `--chat`
 - [ ] Quiet mode works: `--quiet`
 - [ ] Error handling works (try invalid ticker like `AAPL`)
 - [ ] Config creation works: `uv run idx-analyzer BBCA --init-config`
