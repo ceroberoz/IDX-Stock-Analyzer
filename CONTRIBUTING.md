@@ -14,8 +14,8 @@ Thank you for your interest in contributing to IDX Stock Analyzer! This document
 
 ```bash
 # Clone the repository
-git clone https://github.com/ceroberoz/idx-analyzer.git
-cd idx-analyzer
+git clone https://github.com/ceroberoz/IDX-Stock-Analyzer.git
+cd IDX-Stock-Analyzer
 
 # Install dependencies
 uv sync
@@ -127,7 +127,9 @@ Before submitting a PR, test:
 - [ ] All periods work: `--period 1mo`, `--period 6mo`, `--period 1y`
 - [ ] Export works: `--export csv`, `--export json`
 - [ ] Quiet mode works: `--quiet`
-- [ ] Error handling works (try invalid ticker)
+- [ ] Error handling works (try invalid ticker like `AAPL`)
+- [ ] Config creation works: `uv run idx-analyzer BBCA --init-config`
+- [ ] Custom config works: `uv run idx-analyzer BBCA --config custom.toml`
 
 ### Test Stocks
 
@@ -141,17 +143,20 @@ Use these stocks for testing different scenarios:
 ## 📦 Project Structure
 
 ```
-idx-analyzer/
+IDX-Stock-Analyzer/
 ├── idx_analyzer/          # Main package
 │   ├── __init__.py
 │   ├── analyzer.py        # Core analysis logic
-│   └── cli.py            # CLI interface
+│   ├── cli.py             # CLI interface
+│   ├── config.py          # Configuration management
+│   └── exceptions.py      # Custom exceptions
 ├── examples/              # Example scripts
 ├── tests/                 # Test files (future)
 ├── charts/                # Generated charts (gitignored)
 ├── docs/                  # Documentation
+├── idx-analyzer.toml.example  # Example configuration
 ├── pyproject.toml         # Project config
-└── README.md             # Main documentation
+└── README.md              # Main documentation
 ```
 
 ## 🎯 Areas for Contribution
@@ -159,15 +164,13 @@ idx-analyzer/
 ### High Priority
 
 - [ ] Unit tests with pytest
-- [ ] Additional technical indicators (MACD, Bollinger Bands)
+- [ ] Additional technical indicators (MACD, Fibonacci)
 - [ ] Performance optimization
-- [ ] Error handling improvements
 
 ### Medium Priority
 
 - [ ] Web interface (Flask/FastAPI)
 - [ ] More export formats (Excel, PDF)
-- [ ] Configuration file support
 - [ ] Price alerts system
 
 ### Documentation

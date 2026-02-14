@@ -51,7 +51,7 @@ A powerful, user-friendly command-line tool for technical analysis of Indonesian
 ```bash
 # Clone the repository
 git clone https://github.com/ceroberoz/IDX-Stock-Analyzer.git
-cd idx-analyzer
+cd IDX-Stock-Analyzer
 
 # Install dependencies using UV
 uv sync
@@ -165,6 +165,8 @@ uv run idx-analyzer <TICKER> [OPTIONS]
 | `--output` | `-o` | Custom output filename | `--output my_analysis.json` |
 | `--chart` | `-c` | Generate technical chart | `--chart` |
 | `--chart-output` | | Custom chart filename | `--chart-output bbc.png` |
+| `--config` | | Custom configuration file | `--config myconfig.toml` |
+| `--init-config` | | Create default config file | `--init-config` |
 | `--quiet` | `-q` | Minimal output for scripting | `--quiet` |
 | `--version` | `-v` | Show version | `--version` |
 
@@ -194,6 +196,66 @@ uv run idx-analyzer ASII --quiet
 
 # Custom chart filename
 uv run idx-analyzer UNVR -c --chart-output unvr_chart.png
+
+# Create default configuration file
+uv run idx-analyzer BBCA --init-config
+
+# Use custom configuration file
+uv run idx-analyzer BBCA --config myconfig.toml
+```
+
+---
+
+## ⚙️ Configuration File
+
+IDX Analyzer supports TOML configuration files for customizing default behavior.
+
+### Configuration Locations
+
+The tool looks for config files in this order:
+1. Path specified with `--config`
+2. `~/.config/idx-analyzer/config.toml`
+3. `~/.idx-analyzer.toml`
+4. `./idx-analyzer.toml` (current directory)
+
+### Example Configuration
+
+```toml
+[analysis]
+default_period = "6mo"        # Default: 6mo, Options: 1mo, 3mo, 6mo, 1y, 2y, 5y
+rsi_window = 14               # RSI calculation period
+sma_windows = [20, 50, 200]   # SMA periods
+bb_window = 20                # Bollinger Bands window
+bb_std = 2.0                  # Bollinger Bands standard deviations
+vp_bins = 50                  # Volume Profile bins
+
+[network]
+timeout = 30                  # Request timeout (seconds)
+max_retries = 3               # Number of retries for failed requests
+retry_delay = 1.0             # Initial retry delay (seconds)
+use_cache = true              # Enable request caching
+cache_ttl = 300               # Cache TTL (seconds)
+
+[chart]
+dpi = 150                     # Chart resolution
+width = 16                    # Chart width (inches)
+height = 10                   # Chart height (inches)
+style = "default"             # Matplotlib style
+show_grid = true              # Show grid lines
+
+[display]
+color_output = true           # Enable colored terminal output
+verbose = false               # Verbose output mode
+```
+
+### Creating a Config File
+
+```bash
+# Create default config at ~/.idx-analyzer.toml
+uv run idx-analyzer BBCA --init-config
+
+# Or copy the example and customize
+cp idx-analyzer.toml.example ~/.idx-analyzer.toml
 ```
 
 ---
@@ -294,7 +356,7 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 ```bash
 # Clone repo
 git clone https://github.com/ceroberoz/IDX-Stock-Analyzer.git
-cd idx-analyzer
+cd IDX-Stock-Analyzer
 
 # Install with dev dependencies
 uv sync
@@ -315,10 +377,22 @@ uv run ruff check .
 
 ### Common Issues
 
-**"Could not fetch data"**
+**"Invalid or unknown ticker"**
+- Check the ticker spelling (e.g., 'BBCA' not 'BB CA')
+- Use the stock code without '.JK' suffix
+- Verify the stock is listed on IDX
+- Try: BBCA, BBRI, TLKM, ASII, UNVR
+
+**"Could not fetch data" / Network errors**
 - Check your internet connection
-- Verify the ticker symbol is correct
-- Try a different period (e.g., `--period 6mo`)
+- Yahoo Finance may be temporarily unavailable
+- The tool will automatically retry up to 3 times
+- Try again in a few moments
+
+**"Insufficient data"**
+- Try a longer period: `--period 1y` or `--period 2y`
+- The stock may be newly listed
+- Try a different ticker
 
 **"Module not found"**
 ```bash
@@ -329,6 +403,7 @@ uv sync
 **Charts not generating**
 - Ensure you have write permissions in the directory
 - Try specifying a full path: `--chart-output /path/to/chart.png`
+- Check that you have sufficient disk space
 
 ---
 
@@ -364,6 +439,7 @@ uv sync
 - **[NumPy](https://numpy.org/)** - Numerical computing
 - **[Matplotlib](https://matplotlib.org/)** - Data visualization
 - **[Ruff](https://github.com/astral-sh/ruff)** - Fast Python linter and code formatter
+- **[tomli-w](https://github.com/hukkin/tomli-w)** - TOML configuration file support
 
 ### AI Assistance
 This project was developed with assistance from:
@@ -373,6 +449,8 @@ This project was developed with assistance from:
 The AI helped with:
 - SMA 50/200 implementation and trend analysis logic
 - Chart enhancement with insight boxes and visual zones
+- Error handling system with custom exceptions and retry logic
+- Configuration file support with TOML format
 - Code organization and best practices
 - Documentation structure
 
@@ -395,6 +473,8 @@ This project is licensed under the **MIT License** - see [LICENSE](LICENSE) file
 
 - [x] Add Bollinger Bands indicator ✅
 - [x] Volume profile analysis ✅
+- [x] Error handling improvements ✅
+- [x] Configuration file support ✅
 - [ ] Backtesting module
 - [ ] Web interface
 - [ ] Price alerts (email/webhook)
