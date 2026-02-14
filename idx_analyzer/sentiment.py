@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 import logging
 
@@ -188,6 +188,54 @@ class SentimentAnalyzer:
             result = pipeline(text)[0]
             return result["label"].lower(), result["score"]
 
+    def _fetch_yahoo_news(self, ticker: str, max_articles: int) -> list[dict]:
+        """Fetch news from Yahoo Finance."""
+        try:
+            import yfinance as yf
+        except ImportError:
+            raise ImportError("yfinance not installed. Run: pip install yfinance")
+
+        logger.info(f"Fetching Yahoo Finance news for {ticker}")
+        stock = yf.Ticker(ticker)
+
+        try:
+            news_items = stock.get_news(count=max_articles, tab="news")
+        except Exception as e:
+            logger.warning(f"get_news() failed: {e}, trying .news property")
+            news_items = stock.news[:max_articles] if stock.news else []
+
+        return news_items or []
+
+    def _fetch_local_news(self, ticker: str, max_articles: int) -> list[dict]:
+        """
+        Fetch news from local Indonesian sources and convert to Yahoo-like dicts.
+
+        Sources: Investor.id, Kontan, Detik Finance
+        """
+        try:
+            from .news_scrapers import fetch_local_news
+        except ImportError as e:
+            logger.warning(f"Local news scrapers unavailable: {e}")
+            return []
+
+        try:
+            articles = fetch_local_news(ticker, max_results=max_articles)
+            # Convert FetchedArticle to Yahoo-like dict format for unified processing
+            return [
+                {
+                    "title": a.title,
+                    "publisher": a.publisher,
+                    "link": a.link,
+                    "published": int(a.published.timestamp()),
+                    "relatedTickers": a.related_tickers,
+                    "_source": a.source,
+                }
+                for a in articles
+            ]
+        except Exception as e:
+            logger.warning(f"Local news fetch failed: {e}")
+            return []
+
     def analyze(
         self,
         ticker: str,
@@ -196,6 +244,9 @@ class SentimentAnalyzer:
     ) -> SentimentResult:
         """
         Analyze sentiment for a stock ticker.
+
+        Fetches news from Yahoo Finance and local Indonesian sources
+        (Investor.id, Kontan, Detik Finance), then analyzes headline sentiment.
 
         Args:
             ticker: Stock ticker (e.g., "BBCA.JK", "TLKM.JK")
@@ -209,25 +260,30 @@ class SentimentAnalyzer:
             ImportError: If yfinance or transformers not installed
             Exception: If news fetch or analysis fails
         """
-        try:
-            import yfinance as yf
-        except ImportError:
-            raise ImportError("yfinance not installed. Run: pip install yfinance")
-
         # Initialize pipeline (will download model on first run)
         self._get_pipeline()
 
-        # Fetch news from Yahoo Finance
-        logger.info(f"Fetching news for {ticker}")
-        stock = yf.Ticker(ticker)
+        # Fetch from Yahoo Finance
+        yahoo_items = self._fetch_yahoo_news(ticker, max_articles)
+        yahoo_count = len(yahoo_items)
+        logger.info(f"Yahoo Finance returned {yahoo_count} articles")
 
-        try:
-            news_items = stock.get_news(count=max_articles, tab="news")
-        except Exception as e:
-            logger.warning(f"get_news() failed: {e}, trying .news property")
-            news_items = stock.news[:max_articles] if stock.news else []
+        # Supplement with local Indonesian news sources
+        local_needed = max(5, max_articles - yahoo_count)
+        local_items = self._fetch_local_news(ticker, local_needed)
+        logger.info(f"Local sources returned {len(local_items)} articles")
 
-        if not news_items:
+        # Merge and deduplicate
+        all_items = yahoo_items + local_items
+        seen_titles: set[str] = set()
+        unique_items: list[dict] = []
+        for item in all_items:
+            title = item.get("title", "").strip().lower()
+            if title and title not in seen_titles:
+                seen_titles.add(title)
+                unique_items.append(item)
+
+        if not unique_items:
             logger.warning(f"No news found for {ticker}")
             return SentimentResult(
                 ticker=ticker,
@@ -245,13 +301,17 @@ class SentimentAnalyzer:
         analyzed_articles: list[NewsArticle] = []
         pos_count = neg_count = neutral_count = 0
 
-        for item in news_items:
+        for item in unique_items:
             title = item.get("title", "")
             if not title:
                 continue
 
             try:
                 label, score = self._analyze_text(title)
+
+                # Low-confidence guard for non-English headlines
+                if score < 0.55:
+                    label = "neutral"
 
                 # Parse timestamp
                 published_ts = item.get("published") or item.get("date", 0)
@@ -260,9 +320,14 @@ class SentimentAnalyzer:
                 except (ValueError, TypeError, OSError):
                     published = datetime.now()
 
+                source = item.get("_source", "Yahoo Finance")
+                publisher = item.get("publisher", "Unknown")
+                if source and source != "Yahoo Finance":
+                    publisher = f"{publisher} ({source})"
+
                 article = NewsArticle(
                     title=title,
-                    publisher=item.get("publisher", "Unknown"),
+                    publisher=publisher,
                     link=item.get("link", ""),
                     published=published,
                     sentiment_label=label,  # type: ignore
@@ -283,17 +348,28 @@ class SentimentAnalyzer:
                 logger.warning(f"Failed to analyze article: {e}")
                 continue
 
-        # Calculate aggregate score (-1 to +1)
+        # Sort by published date (newest first)
+        analyzed_articles.sort(key=lambda a: a.published, reverse=True)
+
+        # Trim to max
+        analyzed_articles = analyzed_articles[:max_articles]
         total = len(analyzed_articles)
+
+        # Recalculate counts after trimming
+        pos_count = sum(1 for a in analyzed_articles if a.sentiment_label == "positive")
+        neg_count = sum(1 for a in analyzed_articles if a.sentiment_label == "negative")
+        neutral_count = total - pos_count - neg_count
+
+        # Calculate aggregate score (-1 to +1)
         if total > 0:
-            # Weight: positive=+1, negative=-1, neutral=0
             aggregate = (pos_count - neg_count) / total
         else:
             aggregate = 0.0
 
         logger.info(
             f"Sentiment analysis complete for {ticker}: "
-            f"{pos_count} positive, {neg_count} negative, {neutral_count} neutral"
+            f"{pos_count} positive, {neg_count} negative, {neutral_count} neutral "
+            f"(yahoo={yahoo_count}, local={len(local_items)})"
         )
 
         return SentimentResult(

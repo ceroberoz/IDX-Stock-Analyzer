@@ -211,18 +211,21 @@ sentiment = finbert(news_title)[0]
 
 ## Sentiment Analysis - Current Status & Future Enhancements
 
-### Current Implementation Status: ✅ FUNCTIONAL BUT LIMITED
+### Current Implementation Status: ✅ FUNCTIONAL WITH LOCAL NEWS
 
 **What Works:**
 - Sentiment analysis module implemented (`idx_analyzer/sentiment.py`)
 - Both FinBERT and VADER models supported
 - CLI commands: `--sentiment` and `--sentiment-vader`
 - Proper error handling for missing dependencies
+- ✅ **Local News Scrapers** (`idx_analyzer/news_scrapers.py`) — Investor.id, Kontan, Detik Finance
+- ✅ **Yahoo + Local merge** — deduplication, sorted by date, unified pipeline
+- ✅ **Low-confidence guard** — non-English headlines with score < 0.55 treated as neutral
+- ✅ **VADER included by default** — no extra install needed for lightweight sentiment
 
-**Current Limitations:**
-- **Limited News Coverage**: Yahoo Finance provides minimal news for Indonesian stocks
-- **English-Only Analysis**: FinBERT/VADER work best with English text; Indonesian financial news often in Bahasa Indonesia
-- **Small Dataset**: Testing shows 0-5 articles per ticker vs 20-50 for US stocks
+**Remaining Limitations:**
+- **English-Only Models**: FinBERT/VADER work best with English text; Bahasa Indonesia headlines are guarded but not deeply understood
+- **Headline-Only**: Sentiment is based on article titles, not full article body
 - **Model Download**: FinBERT requires ~500MB download on first run
 
 ### Future Enhancement Recommendations
@@ -231,7 +234,7 @@ sentiment = finbert(news_title)[0]
 
 | Enhancement | Effort | Impact | Description |
 |-------------|--------|--------|-------------|
-| **Local News Scrapers** | Medium | High | Scrape Detik Finance, Kontan, Investor Daily Indonesia |
+| ~~**Local News Scrapers**~~ | ~~Medium~~ | ~~High~~ | ✅ Done — Investor.id, Kontan, Detik Finance |
 | **Multilingual Support** | Medium | High | Add Indonesian NLP model (e.g., IndoBERT) |
 | **Sentiment Cache** | Low | Medium | Cache sentiment results to reduce API calls |
 | **Batch Sentiment** | Low | Medium | Analyze multiple tickers in one command |
@@ -272,9 +275,9 @@ sentiment = finbert(news_title)[0]
 ### Implementation Priority
 
 **Next 2 Weeks:**
-- [ ] Add documentation about sentiment limitations
-- [ ] Implement news scraper for Detik Finance
-- [ ] Add fallback when Yahoo returns no news
+- [x] ~~Add documentation about sentiment limitations~~
+- [x] ~~Implement news scrapers for Investor.id, Kontan, Detik Finance~~
+- [x] ~~Add fallback when Yahoo returns no news~~
 
 **Next Month:**
 - [ ] Integrate IndoBERT for Bahasa Indonesia support
@@ -357,7 +360,8 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) for details.
 
 **In Progress:**
 - [x] Documentation reorganization
-- [ ] Sentiment analysis module (Yahoo + FinBERT)
+- [x] Sentiment analysis module (Yahoo + FinBERT + VADER)
+- [x] Local news scrapers (Investor.id, Kontan, Detik Finance)
 
 **Planned:**
 - See Phase 1-3 above
