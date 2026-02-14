@@ -209,6 +209,85 @@ sentiment = finbert(news_title)[0]
 
 ---
 
+## Sentiment Analysis - Current Status & Future Enhancements
+
+### Current Implementation Status: ✅ FUNCTIONAL BUT LIMITED
+
+**What Works:**
+- Sentiment analysis module implemented (`idx_analyzer/sentiment.py`)
+- Both FinBERT and VADER models supported
+- CLI commands: `--sentiment` and `--sentiment-vader`
+- Proper error handling for missing dependencies
+
+**Current Limitations:**
+- **Limited News Coverage**: Yahoo Finance provides minimal news for Indonesian stocks
+- **English-Only Analysis**: FinBERT/VADER work best with English text; Indonesian financial news often in Bahasa Indonesia
+- **Small Dataset**: Testing shows 0-5 articles per ticker vs 20-50 for US stocks
+- **Model Download**: FinBERT requires ~500MB download on first run
+
+### Future Enhancement Recommendations
+
+#### Phase 1A: Immediate Improvements (Low Effort)
+
+| Enhancement | Effort | Impact | Description |
+|-------------|--------|--------|-------------|
+| **Local News Scrapers** | Medium | High | Scrape Detik Finance, Kontan, Investor Daily Indonesia |
+| **Multilingual Support** | Medium | High | Add Indonesian NLP model (e.g., IndoBERT) |
+| **Sentiment Cache** | Low | Medium | Cache sentiment results to reduce API calls |
+| **Batch Sentiment** | Low | Medium | Analyze multiple tickers in one command |
+
+#### Phase 2A: Advanced Sentiment (Medium Effort)
+
+| Enhancement | Effort | Impact | Description |
+|-------------|--------|--------|-------------|
+| **Twitter/X Integration** | Medium | High | Social media sentiment for trending stocks |
+| **Reddit r/IndoFinance** | Low | Medium | Community sentiment from local investors |
+| **StockTwits API** | Low | Medium | Trader sentiment platform |
+| **Sectors.app Fallback** | Low | High | Use Sectors.app for Indonesia-specific news |
+
+#### Phase 3A: AI-Powered Sentiment (High Effort)
+
+| Enhancement | Effort | Impact | Description |
+|-------------|--------|--------|-------------|
+| **Custom FinBERT Training** | High | Very High | Train on Indonesian financial corpus |
+| **LLM Integration** | Medium | High | Use GPT/Claude for advanced sentiment + reasoning |
+| **Sentiment Trends** | Medium | Medium | Track sentiment changes over time |
+| **Correlation Analysis** | Medium | High | Correlate sentiment with price movements |
+
+### Data Source Recommendations
+
+**For Better Indonesian Stock Sentiment:**
+
+1. **Primary**: Yahoo Finance (current) - Free, easy, limited coverage
+2. **Secondary**: Local News Scrapers
+   - Detik Finance: https://finance.detik.com/
+   - Kontan: https://kontan.co.id/
+   - Investor Daily: https://investor.id/
+3. **Tertiary**: Social Media
+   - Twitter/X API (academic/research access)
+   - Reddit r/IndoFinance
+   - StockTwits
+4. **Premium**: Sectors.app ($49/mo) - Indonesia-focused with better coverage
+
+### Implementation Priority
+
+**Next 2 Weeks:**
+- [ ] Add documentation about sentiment limitations
+- [ ] Implement news scraper for Detik Finance
+- [ ] Add fallback when Yahoo returns no news
+
+**Next Month:**
+- [ ] Integrate IndoBERT for Bahasa Indonesia support
+- [ ] Add Twitter/X sentiment (if API available)
+- [ ] Cache sentiment results in SQLite
+
+**Next Quarter:**
+- [ ] Custom model training on Indonesian financial corpus
+- [ ] Sentiment trend visualization on charts
+- [ ] Real-time sentiment alerts
+
+---
+
 ## Implementation Timeline
 
 ### Q1 2026
@@ -228,7 +307,7 @@ sentiment = finbert(news_title)[0]
 
 ### Q4 2026
 - Advanced analytics
-- Sentiment analysis
+- Sentiment analysis enhancements (see Phase 1A-3A above)
 - Web interface (optional)
 
 ---
