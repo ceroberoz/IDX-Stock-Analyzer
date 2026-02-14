@@ -95,6 +95,18 @@ Examples:
         help="Create default configuration file and exit",
     )
 
+    parser.add_argument(
+        "--sentiment",
+        action="store_true",
+        help="Analyze news sentiment using Yahoo Finance + FinBERT (requires: pip install transformers torch)",
+    )
+
+    parser.add_argument(
+        "--sentiment-vader",
+        action="store_true",
+        help="Use lightweight VADER sentiment (no model download, faster)",
+    )
+
     parser.add_argument("-v", "--version", action="version", version="%(prog)s 1.0.0")
 
     return parser
@@ -351,6 +363,47 @@ def main(args: Optional[list] = None) -> int:
             return 1
 
     ticker = parsed_args.ticker
+
+    if parsed_args.sentiment or parsed_args.sentiment_vader:
+        try:
+            from .sentiment import SentimentAnalyzer, format_sentiment_report
+
+            use_vader = parsed_args.sentiment_vader
+            analyzer = SentimentAnalyzer(use_vader=use_vader)
+
+            if not parsed_args.quiet:
+                print(f"\nAnalyzing news sentiment for {ticker}...")
+                if not use_vader:
+                    print("   Loading FinBERT model (first run may take a while)...")
+
+            result = analyzer.analyze(ticker, max_articles=20)
+
+            if parsed_args.export:
+                import json
+
+                filepath = parsed_args.output or f"{ticker}_sentiment.json"
+                with open(filepath, "w") as f:
+                    json.dump(result.to_dict(), f, indent=2)
+                print(f"Exported to: {filepath}")
+            else:
+                print(format_sentiment_report(result))
+
+            return 0
+
+        except ImportError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            print(
+                "\nTo use sentiment analysis, install required packages:",
+                file=sys.stderr,
+            )
+            if parsed_args.sentiment_vader:
+                print("   pip install vaderSentiment", file=sys.stderr)
+            else:
+                print("   pip install transformers torch", file=sys.stderr)
+            return 1
+        except Exception as e:
+            print(f"Sentiment analysis failed: {e}", file=sys.stderr)
+            return 1
 
     try:
         analyzer = IDXAnalyzer(ticker, config=config)
