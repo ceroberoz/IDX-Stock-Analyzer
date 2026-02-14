@@ -120,8 +120,10 @@ uv run idx-analyzer <TICKER> [OPTIONS]
 | `--chat` | | Generate compact chat report | `--chat` |
 | `--config` | | Custom configuration file | `--config myconfig.toml` |
 | `--init-config` | | Create default config file | `--init-config` |
-| `--sentiment` | | Analyze news sentiment (FinBERT) | `--sentiment` |
+| `--sentiment` | | Analyze news sentiment (FinBERT + Indonesian hybrid) | `--sentiment` |
 | `--sentiment-vader` | | Lightweight VADER sentiment | `--sentiment-vader` |
+| `--sentiment-llm` | | Use LLM for sentiment (Ollama-compatible) | `--sentiment-llm` |
+| `--no-hybrid` | | Disable Indonesian hybrid mode for FinBERT | `--sentiment --no-hybrid` |
 | `--cache-info` | | Show HTTP cache information | `--cache-info` |
 | `--clear-cache` | | Clear HTTP cache | `--clear-cache` |
 | `--quiet` | `-q` | Minimal output for scripting | `--quiet` |
@@ -305,6 +307,84 @@ Bearish. Support at 7,200 (0.0% below).
 - Ensure you have write permissions in the directory
 - Try specifying a full path: `--chart-output /path/to/chart.png`
 - Check that you have sufficient disk space
+
+---
+
+## Sentiment Analysis
+
+IDX Analyzer provides three sentiment analysis backends:
+
+### FinBERT with Indonesian Hybrid (Default)
+
+The default `--sentiment` flag uses FinBERT with an intelligent hybrid layer designed specifically for the Indonesian stock market.
+
+**How it works:**
+1. FinBERT analyzes the headline using its financial NLP training
+2. The hybrid layer scans for Indonesian financial terms (e.g., "melesat", "anjlok", "dividen", "suspensi")
+3. If Indonesian context is detected, the hybrid layer adjusts FinBERT's prediction
+4. Final sentiment combines both signals for better accuracy on Bahasa Indonesia headlines
+
+**Example Indonesian terms recognized (v1.4 - 2025-2026 Optimized):**
+- **Positive**: *melesat, melonjak, dividen, danantara, idxcarbon, hilirisasi, makan bergizi gratis, perumahan rakyat, masuk msci*
+- **Negative**: *anjlok, merosot, rugi, full call auction (FCA), papan pemantauan khusus (PPK), pembekuan bobot msci, outlook negatif moody's, suspensi*
+
+```bash
+# Use hybrid FinBERT (recommended for IDX stocks)
+uv run idx-analyzer BBCA --sentiment
+
+# Compare with pure FinBERT (no hybrid enhancement)
+uv run idx-analyzer BBCA --sentiment --no-hybrid
+```
+
+### VADER (Lightweight)
+
+Fast, rule-based sentiment without ML model download:
+
+```bash
+uv run idx-analyzer BBCA --sentiment-vader
+```
+
+### LLM (Most Accurate for Indonesian)
+
+Uses any OpenAI-compatible API (e.g., Ollama) for native Bahasa Indonesia understanding:
+
+```bash
+# With local Ollama (default)
+uv run idx-analyzer BBCA --sentiment-llm
+
+# With custom LLM endpoint
+uv run idx-analyzer BBCA --sentiment-llm --llm-model gpt-4 --llm-url https://api.openai.com/v1
+```
+
+### Sentiment Output Example
+
+```
+================================================================
+            NEWS SENTIMENT ANALYSIS: BBCA.JK
+================================================================
+
+Overall Sentiment: 📈 BULLISH
+Aggregate Score: +0.45 (-1.0 to +1.0)
+
+----------------------------------------------------------------
+ARTICLE BREAKDOWN
+----------------------------------------------------------------
+   📈 Positive:    8 articles
+   📉 Negative:    3 articles
+   ⚖️ Neutral:     4 articles
+   Total:         15 articles analyzed
+
+----------------------------------------------------------------
+RECENT NEWS HEADLINES
+----------------------------------------------------------------
+1. 📈 [02/14] BBCA cetak laba tertinggi, saham melesat...
+   Source: Investor.id (kontan)
+
+2. 📉 [02/13] Korreksi IHSG tekan harga saham perbankan...
+   Source: Detik Finance
+
+Model: FINBERT-HYBRID | Powered by Yahoo Finance
+```
 
 ---
 

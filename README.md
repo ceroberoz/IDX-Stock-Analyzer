@@ -15,6 +15,7 @@ A powerful, user-friendly command-line tool for technical analysis of Indonesian
 - 🔍 **Smart Support & Resistance Detection** - Automatically identifies key price levels
 - 📊 **Multi-Timeframe Trend Analysis** - SMA 20, 50, 200 with Golden/Death Cross detection
 - 📈 **Enhanced Technical Charts** - Bollinger Bands, Volume Profile, RSI, SMA lines
+- 📰 **News Sentiment Analysis** - FinBERT with Indonesian hybrid (v1.4) optimized for 2025-2026 market trends (FCA, Danantara, MSCI/Moody's shifts)
 - 📁 **Export Options** - Save analysis to CSV or JSON
 - 🎨 **Modern UI** - Beautiful dashboard with emoji-rich insights
 - 📱 **Chat-Ready Reports** - Instant summaries for Telegram/WhatsApp
@@ -156,7 +157,7 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for the complete development plan.
 ### Phase 3: Institutional-Grade (Q4 2026)
 - Portfolio optimization
 - Volatility surface
-- News sentiment
+- ✅ **News sentiment** - FinBERT with Indonesian hybrid enhancement
 - Analyst recommendations
 
 ---

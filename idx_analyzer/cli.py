@@ -3,6 +3,7 @@ Command-line interface for IDX Analyzer
 """
 
 import argparse
+import shutil
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -113,6 +114,12 @@ Examples:
         "--sentiment-llm",
         action="store_true",
         help="Use LLM via OpenAI-compatible API for sentiment (e.g., Ollama)",
+    )
+
+    parser.add_argument(
+        "--no-hybrid",
+        action="store_true",
+        help="Disable Indonesian hybrid mode for FinBERT (use pure FinBERT)",
     )
 
     parser.add_argument(
@@ -463,9 +470,11 @@ def main(args: Optional[list] = None) -> int:
 
             use_vader = parsed_args.sentiment_vader
             use_llm = parsed_args.sentiment_llm
+            use_hybrid = not parsed_args.no_hybrid
             analyzer = SentimentAnalyzer(
                 use_vader=use_vader,
                 use_llm=use_llm,
+                use_hybrid=use_hybrid,
                 llm_model=parsed_args.llm_model,
                 llm_base_url=parsed_args.llm_url,
                 llm_api_key=parsed_args.llm_api_key,
@@ -476,7 +485,14 @@ def main(args: Optional[list] = None) -> int:
                 if use_llm:
                     print(f"   Using LLM: {parsed_args.llm_model}")
                 elif not use_vader:
-                    print("   Loading FinBERT model (first run may take a while)...")
+                    if use_hybrid:
+                        print(
+                            "   Loading FinBERT model with Indonesian hybrid enhancement..."
+                        )
+                    else:
+                        print(
+                            "   Loading FinBERT model (first run may take a while)..."
+                        )
 
             result = analyzer.analyze(ticker, max_articles=20)
 
@@ -503,10 +519,19 @@ def main(args: Optional[list] = None) -> int:
                 "\nTo use sentiment analysis, install required packages:",
                 file=sys.stderr,
             )
-            if parsed_args.sentiment_vader:
-                print("   pip install vaderSentiment", file=sys.stderr)
+            uv_available = shutil.which("uv") is not None
+            if uv_available:
+                print("   uv pip install transformers torch", file=sys.stderr)
+                print("\nOr run with the 'sentiment' extra:", file=sys.stderr)
+                print(
+                    "   uv run --extra sentiment idx-analyzer <TICKER> --sentiment",
+                    file=sys.stderr,
+                )
             else:
-                print("   pip install transformers torch", file=sys.stderr)
+                if parsed_args.sentiment_vader:
+                    print("   pip install vaderSentiment", file=sys.stderr)
+                else:
+                    print("   pip install transformers torch", file=sys.stderr)
             return 1
         except Exception as e:
             print(f"Sentiment analysis failed: {e}", file=sys.stderr)

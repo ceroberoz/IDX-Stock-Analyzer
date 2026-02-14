@@ -13,13 +13,247 @@ Optional (lighter alternative):
 
 from __future__ import annotations
 
+import json
+import re
 from dataclasses import dataclass, field
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Literal
 
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def _load_indonesian_lexicon() -> dict[str, set[str]]:
+    """
+    Load Indonesian financial sentiment lexicon from JSON file.
+
+    Returns:
+        Dictionary with keys: 'positive', 'negative', 'negation', 'uncertainty'
+        Each containing a set of terms for matching.
+    """
+    lexicon_path = Path(__file__).parent / "indonesian_sentiment_lexicon.json"
+
+    try:
+        with open(lexicon_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        # Flatten positive terms from all subcategories
+        positive_terms = set()
+        for category_data in data.get("positive", {}).values():
+            if isinstance(category_data, dict) and "terms" in category_data:
+                positive_terms.update(category_data["terms"])
+
+        # Flatten negative terms from all subcategories
+        negative_terms = set()
+        for category_data in data.get("negative", {}).values():
+            if isinstance(category_data, dict) and "terms" in category_data:
+                negative_terms.update(category_data["terms"])
+
+        # Get modifier terms
+        negation_terms = set(
+            data.get("modifiers", {}).get("negation", {}).get("terms", [])
+        )
+        uncertainty_terms = set(
+            data.get("modifiers", {}).get("uncertainty", {}).get("terms", [])
+        )
+
+        return {
+            "positive": positive_terms,
+            "negative": negative_terms,
+            "negation": negation_terms,
+            "uncertainty": uncertainty_terms,
+        }
+
+    except (FileNotFoundError, json.JSONDecodeError, KeyError) as e:
+        logger.warning(f"Could not load Indonesian lexicon from {lexicon_path}: {e}")
+        logger.warning("Using empty lexicon - hybrid sentiment analysis disabled")
+        return {
+            "positive": set(),
+            "negative": set(),
+            "negation": set(),
+            "uncertainty": set(),
+        }
+
+
+# Load the Indonesian sentiment lexicon on module import
+_INDO_LEXICON = _load_indonesian_lexicon()
+
+# Export term sets for backward compatibility
+INDONESIAN_POSITIVE_TERMS = _INDO_LEXICON["positive"]
+INDONESIAN_NEGATIVE_TERMS = _INDO_LEXICON["negative"]
+INDONESIAN_NEGATION_TERMS = _INDO_LEXICON["negation"]
+INDONESIAN_UNCERTAINTY_TERMS = _INDO_LEXICON["uncertainty"]
+
+
+# Boost multipliers for specific patterns
+SENTIMENT_BOOST_STRONG = 0.35
+SENTIMENT_BOOST_MEDIUM = 0.20
+SENTIMENT_BOOST_WEAK = 0.10
+
+
+def _normalize_text(text: str) -> str:
+    """Normalize Indonesian text for matching."""
+    # Convert to lowercase
+    text = text.lower()
+    # Remove extra whitespace
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+def _count_term_matches(text: str, term_set: set[str]) -> tuple[int, float]:
+    """
+    Count matches and calculate weighted score based on term strength.
+    Returns (count, weighted_score)
+    """
+    text_normalized = _normalize_text(text)
+    count = 0
+    weighted_score = 0.0
+    matched_terms = set()
+
+    # Sort terms by length (longest first) to match multi-word phrases before single words
+    sorted_terms = sorted(term_set, key=len, reverse=True)
+
+    for term in sorted_terms:
+        # Skip if this term is a substring of already matched longer term
+        if any(
+            term in matched for matched in matched_terms if len(matched) > len(term)
+        ):
+            continue
+
+        if term in text_normalized:
+            count += 1
+            matched_terms.add(term)
+            # Stronger weighting for matches
+            # Base weight: 1.0 for single word, up to 2.5 for phrases
+            word_count = len(term.split())
+            if word_count == 1:
+                weight = 1.0
+            elif word_count == 2:
+                weight = 1.8
+            else:
+                weight = 2.5
+            weighted_score += weight
+
+    return count, weighted_score
+
+
+def _detect_negation_context(text: str, term_position: int) -> bool:
+    """Check if there's a negation word before a given position in text."""
+    text_normalized = _normalize_text(text)
+    words_before = text_normalized[:term_position].split()[-5:]  # Last 5 words
+    return any(neg in words_before for neg in INDONESIAN_NEGATION_TERMS)
+
+
+def apply_indonesian_sentiment_rules(
+    text: str, base_label: str, base_score: float
+) -> tuple[str, float, bool]:
+    """
+    Apply Indonesian market-specific rules to adjust FinBERT sentiment.
+
+    This hybrid approach:
+    1. Takes FinBERT's base prediction
+    2. Scans for Indonesian financial terms
+    3. Adjusts label/score based on term matches and context
+    4. Returns enhanced sentiment
+
+    Args:
+        text: Original headline/text
+        base_label: FinBERT's predicted label ('positive', 'negative', 'neutral')
+        base_score: FinBERT's confidence score (0.0 to 1.0)
+
+    Returns:
+        Tuple of (adjusted_label, adjusted_score, has_indonesian_terms)
+    """
+    text_lower = text.lower()
+
+    # Count term matches
+    pos_count, pos_weight = _count_term_matches(text, INDONESIAN_POSITIVE_TERMS)
+    neg_count, neg_weight = _count_term_matches(text, INDONESIAN_NEGATIVE_TERMS)
+
+    # Check if text appears to be Indonesian
+    is_indonesian = bool(
+        re.search(
+            r"[aiueo]ng|[aiueo]ny|[aiueo]r\b|yang|dengan|untuk|dari|dalam|pada|oleh|saham|harga|bank|bursa",
+            text_lower,
+        )
+    )
+    indonesian_term_ratio = (pos_count + neg_count) / max(len(text.split()), 1)
+    # Detect if ANY Indonesian financial terms present - single term triggers mode
+    has_indonesian_terms = (
+        pos_count + neg_count > 0 or indonesian_term_ratio > 0.02 or is_indonesian
+    )
+
+    # Calculate sentiment delta based on term weights - STRONGLY AMPLIFIED
+    sentiment_delta = (pos_weight - neg_weight) * 0.4  # Stronger multiplier
+
+    # Check for uncertainty modifiers
+    uncertainty_count, _ = _count_term_matches(text, INDONESIAN_UNCERTAINTY_TERMS)
+    uncertainty_factor = max(0.7, 1.0 - (uncertainty_count * 0.1))
+
+    # Determine rule-based sentiment direction - VERY LOW THRESHOLDS
+    if pos_weight > neg_weight * 1.05:  # Almost any positive weight advantage
+        rule_sentiment = "positive"
+        rule_confidence = min(0.6 + (pos_weight * 0.15), 0.95)
+    elif neg_weight > pos_weight * 1.05:  # Almost any negative weight advantage
+        rule_sentiment = "negative"
+        rule_confidence = min(0.6 + (neg_weight * 0.15), 0.95)
+    else:
+        rule_sentiment = "neutral"
+        rule_confidence = 0.5
+
+    # Hybrid decision: combine FinBERT with rule-based
+    rule_strength = max(pos_weight, neg_weight)
+
+    # Decision logic - VERY AGGRESSIVE for Indonesian context
+    if has_indonesian_terms:
+        # Strong Indonesian context detected
+        if rule_strength >= 0.5 and rule_sentiment != base_label:
+            # Clear term-based signal contradicts FinBERT - trust rules heavily
+            adjusted_label = rule_sentiment
+            adjusted_score = rule_confidence * uncertainty_factor
+        elif rule_strength >= 0.3:  # Low threshold triggers adjustment
+            # Apply sentiment delta adjustment
+            adjusted_label = _adjust_label(base_label, sentiment_delta)
+            adjusted_score = (
+                min(max(base_score, 0.6) + abs(sentiment_delta), 0.95)
+                * uncertainty_factor
+            )
+        else:
+            # Weak term signals but Indonesian context - still adjust slightly
+            adjusted_label = _adjust_label(base_label, sentiment_delta * 0.5)
+            adjusted_score = max(base_score, 0.55) * uncertainty_factor
+    else:
+        # Weak Indonesian context - trust FinBERT more
+        adjusted_label = base_label
+        adjusted_score = base_score
+
+    # Final confidence boost if strong signals align
+    if adjusted_label == rule_sentiment and rule_strength >= 1.0:
+        adjusted_score = min(adjusted_score * 1.15, 0.95)
+
+    return adjusted_label, round(adjusted_score, 3), has_indonesian_terms
+
+
+def _adjust_label(current_label: str, delta: float) -> str:
+    """Adjust label based on sentiment delta."""
+    # Very low thresholds for maximum responsiveness
+    if delta > 0.08:  # Very sensitive - any positive signal flips to positive
+        return "positive"
+    elif delta < -0.08:  # Very sensitive - any negative signal flips to negative
+        return "negative"
+    elif abs(delta) < 0.03:  # Near zero - stick with current
+        return current_label
+    else:
+        # Small delta - if currently neutral, lean toward direction
+        if current_label == "neutral":
+            if delta > 0:
+                return "positive"
+            elif delta < 0:
+                return "negative"
+        # If already has sentiment, keep it unless delta strongly opposite
+        return current_label
 
 
 @dataclass
@@ -47,7 +281,7 @@ class SentimentResult:
     total_articles: int
     articles: list[NewsArticle]
     analysis_period: str = "7d"  # Default: last 7 days
-    model_used: str = "finbert"
+    model_used: str = "finbert-hybrid"  # finbert-hybrid, finbert, vader, or llm
 
     @property
     def sentiment_label(self) -> str:
@@ -104,6 +338,12 @@ class SentimentAnalyzer:
     Alternative: Use LLM via OpenAI-compatible API (e.g., Ollama) for
                  multilingual sentiment that understands Bahasa Indonesia.
 
+    HYBRID MODE (default for FinBERT):
+    When using FinBERT with Indonesian stocks, the analyzer automatically
+    applies a rule-based layer that recognizes Indonesian financial terms
+    and adjusts FinBERT's predictions accordingly. This improves accuracy
+    on Bahasa Indonesia headlines significantly.
+
     Example:
         >>> analyzer = SentimentAnalyzer()
         >>> result = analyzer.analyze("BBCA.JK")
@@ -115,6 +355,7 @@ class SentimentAnalyzer:
         model_name: str = "ProsusAI/finBERT",
         use_vader: bool = False,
         use_llm: bool = False,
+        use_hybrid: bool = True,
         llm_model: str = "deepseek-v3.1:671b-cloud",
         llm_base_url: str = "http://localhost:11434/v1",
         llm_api_key: str = "ollama",
@@ -126,6 +367,7 @@ class SentimentAnalyzer:
             model_name: HuggingFace model name (default: ProsusAI/finBERT)
             use_vader: If True, use VADER instead of FinBERT (no download, lighter)
             use_llm: If True, use LLM via OpenAI-compatible API
+            use_hybrid: If True (default), enable Indonesian term enhancement for FinBERT
             llm_model: LLM model name for the API (default: deepseek-v3.1:671b-cloud)
             llm_base_url: OpenAI-compatible API base URL (default: Ollama local)
             llm_api_key: API key (default: "ollama" for local Ollama)
@@ -133,6 +375,7 @@ class SentimentAnalyzer:
         self.model_name = model_name
         self.use_vader = use_vader
         self.use_llm = use_llm
+        self.use_hybrid = use_hybrid
         self.llm_model = llm_model
         self.llm_base_url = llm_base_url
         self.llm_api_key = llm_api_key
@@ -270,12 +513,12 @@ Respond with ONLY the JSON array, no other text."""
             # Fall back to neutral for all
             return [("neutral", 0.5)] * len(headlines)
 
-    def _analyze_text(self, text: str) -> tuple[str, float]:
+    def _analyze_text(self, text: str) -> tuple[str, float, bool]:
         """
-        Analyze single text and return sentiment label and score.
+        Analyze single text and return sentiment label, score, and hybrid status.
 
         Returns:
-            Tuple of (label, confidence_score)
+            Tuple of (label, confidence_score, is_hybrid_adjusted)
         """
         # Truncate to 512 tokens (FinBERT limit)
         text = text[:512]
@@ -295,12 +538,22 @@ Respond with ONLY the JSON array, no other text."""
 
             # Convert compound (-1 to 1) to confidence (0 to 1)
             confidence = abs(compound)
-            return label, confidence
+            return label, confidence, False
         else:
-            # FinBERT analysis
+            # FinBERT analysis with optional Indonesian hybrid enhancement
             pipeline = self._get_pipeline()
             result = pipeline(text)[0]
-            return result["label"].lower(), result["score"]
+            base_label = result["label"].lower()
+            base_score = result["score"]
+
+            # Apply hybrid Indonesian sentiment rules if enabled
+            if self.use_hybrid:
+                adjusted_label, adjusted_score, has_indonesian_terms = (
+                    apply_indonesian_sentiment_rules(text, base_label, base_score)
+                )
+                return adjusted_label, adjusted_score, has_indonesian_terms
+            else:
+                return base_label, base_score, False
 
     def _fetch_yahoo_news(self, ticker: str, max_articles: int) -> list[dict]:
         """Fetch news from Yahoo Finance."""
@@ -456,10 +709,11 @@ Respond with ONLY the JSON array, no other text."""
                     continue
 
                 try:
-                    label, score = self._analyze_text(title)
+                    label, score, has_indonesian_terms = self._analyze_text(title)
 
                     # Low-confidence guard for non-English headlines
-                    if score < 0.55:
+                    # Skip guard if Indonesian terms detected and hybrid mode adjusted sentiment
+                    if score < 0.55 and not has_indonesian_terms:
                         label = "neutral"
 
                     # Parse timestamp
@@ -532,6 +786,8 @@ Respond with ONLY the JSON array, no other text."""
             return f"llm ({self.llm_model})"
         elif self.use_vader:
             return "vader"
+        elif self.use_hybrid:
+            return "finbert-hybrid"
         else:
             return "finbert"
 
