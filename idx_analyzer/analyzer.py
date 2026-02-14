@@ -2,6 +2,7 @@
 Core analysis module for IDX stocks with enhanced error handling and configuration support.
 """
 
+import re
 import time
 from typing import List, Optional, Tuple
 
@@ -928,6 +929,26 @@ class IDXAnalyzer:
 
         return "\n".join(lines)
 
+    def _strip_emojis(self, text: str) -> str:
+        """Remove emojis from text for matplotlib compatibility"""
+        emoji_pattern = re.compile(
+            "["
+            "\U0001f600-\U0001f64f"  # emoticons
+            "\U0001f300-\U0001f5ff"  # symbols & pictographs
+            "\U0001f680-\U0001f6ff"  # transport & map symbols
+            "\U0001f1e0-\U0001f1ff"  # flags
+            "\U00002702-\U000027b0"  # dingbats
+            "\U000024c2-\U0001f251"  # enclosed characters
+            "\U0001f900-\U0001f9ff"  # supplemental symbols (🧊🥀🧱)
+            "\U0001fa00-\U0001fa6f"  # chess symbols
+            "\U0001fa70-\U0001faff"  # symbols and pictographs extended-a
+            "\U00002600-\U000026ff"  # miscellaneous symbols
+            "\U00002700-\U000027bf"  # dingbats
+            "]+",
+            flags=re.UNICODE,
+        )
+        return emoji_pattern.sub(r"", text).strip()
+
     def generate_chart(
         self, output_path: Optional[str] = None, show: bool = False
     ) -> str:
@@ -1237,7 +1258,7 @@ class IDXAnalyzer:
             ax_insight.text(
                 0.5,
                 0.5,
-                formatted_narrative,
+                self._strip_emojis(formatted_narrative),
                 transform=ax_insight.transAxes,
                 fontsize=9,
                 verticalalignment="center",
@@ -1249,7 +1270,12 @@ class IDXAnalyzer:
                     linewidth=2,
                     alpha=0.95,
                 ),
-                family="monospace",
+                family=[
+                    "Apple Color Emoji",
+                    "Segoe UI Emoji",
+                    "Noto Color Emoji",
+                    "DejaVu Sans",
+                ],
                 wrap=True,
             )
 
