@@ -17,6 +17,20 @@ dependencies = [
 [project.scripts]
 idx-analyzer = "idx_analyzer.cli:main"
 
+[project.optional-dependencies]
+sentiment = [
+    "transformers>=4.30.0",
+    "torch>=2.0.0",
+]
+vader = [
+    "vaderSentiment>=3.3.2",
+]
+all = [
+    "transformers>=4.30.0",
+    "torch>=2.0.0",
+    "vaderSentiment>=3.3.2",
+]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
