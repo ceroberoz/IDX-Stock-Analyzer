@@ -2,6 +2,8 @@
 
 Thank you for your interest in contributing to IDX Stock Analyzer! This document provides guidelines and instructions for contributing.
 
+---
+
 ## 🚀 Getting Started
 
 ### Prerequisites
@@ -24,21 +26,63 @@ uv sync
 uv run idx-analyzer --version
 ```
 
-## 📋 Development Workflow
+---
 
-### 1. Create a Branch
+## 🌿 Branching Strategy
+
+We use a multi-branch workflow:
+
+```
+main (production-ready)
+  └── development (integration branch)
+        └── research (experimental features)
+        └── feature/* (new features)
+        └── fix/* (bug fixes)
+```
+
+### Branch Types
+
+| Branch | Purpose | Base | Merge Target |
+|--------|---------|------|--------------|
+| `main` | Production releases | - | - |
+| `development` | Integration branch | `main` | `main` |
+| `research` | R&D, documentation | `development` | `development` |
+| `feature/*` | New features | `development` | `development` |
+| `fix/*` | Bug fixes | `development` | `development` |
+
+### Creating a Branch
 
 ```bash
+# For new features
+git checkout development
 git checkout -b feature/your-feature-name
-# or
+
+# For bug fixes
+git checkout development
 git checkout -b fix/issue-description
+
+# For research/documentation
+git checkout development
+git checkout -b research/topic-name
 ```
+
+---
+
+## 📋 Development Workflow
+
+### 1. Pick the Right Branch
+
+Check the [Roadmap](docs/ROADMAP.md) to see which phase aligns with your contribution:
+
+- **Phase 1 (Core Enhancements)**: Intraday, batch analysis, Excel export
+- **Phase 2 (Advanced Analytics)**: Backtesting, alerts, screeners
+- **Phase 3 (Institutional)**: Portfolio optimization, sentiment analysis
 
 ### 2. Make Changes
 
 - Follow the existing code style
 - Add docstrings to functions and classes
-- Update README.md if needed
+- Update relevant documentation in `docs/`
 
 ### 3. Format and Lint
 
@@ -85,10 +129,67 @@ git commit -m "feat: add your feature description"
 ### 6. Push and Create PR
 
 ```bash
+# Push to your branch
 git push origin feature/your-feature-name
+
+# Create PR to development branch (not main!)
 ```
 
-Then create a Pull Request on GitHub.
+**PR Guidelines:**
+- Target the `development` branch (not `main`)
+- Reference related issues
+- Include test results
+- Update documentation if needed
+
+---
+
+## 🎯 Development Phases
+
+Based on Yahoo Finance API capabilities, development is organized in phases:
+
+### Phase 1: Core Enhancements (Immediate)
+
+**Goal:** Expand current capabilities with low-effort, high-value features
+
+| Feature | Yahoo Finance API | Difficulty | Status |
+|---------|------------------|------------|--------|
+| Intraday Analysis | `history(interval="15m")` | Easy | Open |
+| Batch Portfolio | `yf.download()` | Easy | Open |
+| Dividend Calendar | `Ticker.dividends` | Easy | Open |
+| Excel Export | Current + `pd.ExcelWriter` | Easy | Open |
+| Stock Splits | `Ticker.splits` | Easy | Open |
+
+**Good for:** New contributors, first PRs
+
+### Phase 2: Advanced Analytics (Medium-Term)
+
+**Goal:** Implement sophisticated analysis features
+
+| Feature | Yahoo Finance API | Difficulty | Status |
+|---------|------------------|------------|--------|
+| Backtesting Engine | `history()` historical | Medium | Open |
+| Real-time Alerts | WebSocket streaming | Medium | Open |
+| Fundamental Screener | `screener.EquityQuery` | Medium | Open |
+| Options Flow | `option_chain()` | Hard | Open |
+| Earnings Tracker | `earnings_dates` | Medium | Open |
+
+**Good for:** Experienced contributors, complex features
+
+### Phase 3: Institutional-Grade (Advanced)
+
+**Goal:** Professional-level tools
+
+| Feature | Yahoo Finance API | Difficulty | Status |
+|---------|------------------|------------|--------|
+| Portfolio Optimization | Multi-ticker correlation | Hard | Open |
+| Volatility Surface | Options across expirations | Hard | Open |
+| Insider Tracking | Holders data | Medium | Open |
+| News Sentiment | `Ticker.news` | Medium | Open |
+| Analyst Ratings | `recommendations` | Easy | Open |
+
+**Good for:** Domain experts, research contributions
+
+---
 
 ## 📝 Code Style Guidelines
 
@@ -116,6 +217,8 @@ def calculate_sma(data: pd.Series, window: int) -> pd.Series:
     return data.rolling(window=window).mean()
 ```
 
+---
+
 ## 🧪 Testing
 
 ### Manual Testing Checklist
@@ -141,7 +244,9 @@ Use these stocks for testing different scenarios:
 - **ADRO** - Mining sector
 - **UNVR** - Consumer goods
 
-## 📦 Project Structure
+---
+
+## 📁 Project Structure
 
 ```
 IDX-Stock-Analyzer/
@@ -151,35 +256,79 @@ IDX-Stock-Analyzer/
 │   ├── cli.py             # CLI interface
 │   ├── config.py          # Configuration management
 │   └── exceptions.py      # Custom exceptions
+├── docs/                  # Documentation
+│   ├── ROADMAP.md         # Development roadmap
+│   ├── USAGE.md           # User guide
+│   ├── API.md             # Python API reference
+│   └── TECHNICAL_ANALYSIS.md  # TA explanations
 ├── examples/              # Example scripts
 ├── tests/                 # Test files (future)
 ├── charts/                # Generated charts (gitignored)
-├── docs/                  # Documentation
-├── idx-analyzer.toml.example  # Example configuration
+├── README.md              # Main documentation
+├── CONTRIBUTING.md        # This file
 ├── pyproject.toml         # Project config
-└── README.md              # Main documentation
+└── LICENSE                # MIT License
 ```
 
-## 🎯 Areas for Contribution
+---
 
-### High Priority
+## 🎁 Areas for Contribution
+
+### High Priority (Phase 1)
 
 - [ ] Unit tests with pytest
-- [ ] Additional technical indicators (MACD, Fibonacci)
-- [ ] Performance optimization
+- [ ] Intraday data support (`--interval` flag)
+- [ ] Batch analysis for multiple tickers
+- [ ] Excel export format
+- [ ] Dividend tracking module
 
-### Medium Priority
+### Medium Priority (Phase 2)
 
+- [ ] Backtesting module
+- [ ] Price alerts system (email/webhook)
+- [ ] Fundamental screener
 - [ ] Web interface (Flask/FastAPI)
-- [ ] More export formats (Excel, PDF)
-- [ ] Price alerts system
 
 ### Documentation
 
 - [ ] Tutorial videos
-- [ ] More examples
-- [ ] API documentation
+- [ ] More examples in `examples/`
+- [ ] API documentation improvements
 - [ ] Contributing translations
+
+### Research (Phase 3)
+
+- [ ] Portfolio optimization algorithms
+- [ ] Sentiment analysis integration
+- [ ] Options analysis tools
+
+---
+
+## 🔬 Yahoo Finance API Research
+
+We use `yfinance` library which wraps Yahoo Finance API. Available capabilities:
+
+### Market Data
+- Real-time quotes (15-20 min delayed)
+- Historical OHLCV data
+- Intraday data (1m, 5m, 15m, 30m, 1h)
+- Options chains with Greeks
+
+### Fundamental Data
+- Financial statements (income, balance, cash flow)
+- Valuation ratios (P/E, PEG, EV/EBITDA)
+- Dividend history and splits
+- Company info and sector data
+
+### Corporate Actions
+- Earnings dates and history
+- Analyst recommendations
+- Insider transactions
+- Institutional holders
+
+See [docs/ROADMAP.md](docs/ROADMAP.md) for detailed API capabilities mapping.
+
+---
 
 ## 🐛 Reporting Bugs
 
@@ -213,14 +362,19 @@ When reporting bugs, please include:
 - idx-analyzer 0.1.0
 ```
 
+---
+
 ## 💡 Feature Requests
 
 When suggesting features:
 
-1. Check if it's already been suggested
+1. Check the [Roadmap](docs/ROADMAP.md) if it's already planned
 2. Describe the use case
 3. Explain why it would be useful
-4. Provide examples if possible
+4. Reference Yahoo Finance API capabilities if applicable
+5. Provide examples if possible
+
+---
 
 ## 📜 Code of Conduct
 
@@ -229,6 +383,8 @@ When suggesting features:
 - Focus on the code, not the person
 - Help newcomers get started
 
+---
+
 ## 🙏 Recognition
 
 Contributors will be:
@@ -236,10 +392,12 @@ Contributors will be:
 - Mentioned in release notes
 - Credited in relevant documentation
 
+---
+
 ## 📞 Questions?
 
-- Open an issue for questions
-- Join discussions
-- Check existing documentation
+- Open an issue with label `question`
+- Join GitHub Discussions
+- Check existing documentation in `docs/`
 
 Thank you for contributing! 🎉
