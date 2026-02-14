@@ -1270,12 +1270,6 @@ class IDXAnalyzer:
                     linewidth=2,
                     alpha=0.95,
                 ),
-                family=[
-                    "Apple Color Emoji",
-                    "Segoe UI Emoji",
-                    "Noto Color Emoji",
-                    "DejaVu Sans",
-                ],
                 wrap=True,
             )
 
