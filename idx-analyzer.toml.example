@@ -1,0 +1,33 @@
+# IDX Analyzer Configuration File
+# Place this file at one of these locations:
+#   - ~/.config/idx-analyzer/config.toml
+#   - ~/.idx-analyzer.toml
+#   - ./idx-analyzer.toml (current directory)
+# Or specify a custom path with: idx-analyzer BBCA --config /path/to/config.toml
+
+[analysis]
+default_period = "6mo"        # Default data period: 1mo, 3mo, 6mo, 1y, 2y, 5y
+rsi_window = 14               # RSI calculation window
+sma_windows = [20, 50, 200]   # SMA periods to calculate
+bb_window = 20                # Bollinger Bands window
+bb_std = 2.0                  # Bollinger Bands standard deviations
+vp_bins = 50                  # Volume Profile bins
+
+[network]
+timeout = 30                  # Request timeout in seconds
+max_retries = 3               # Number of retries for failed requests
+retry_delay = 1.0             # Initial retry delay (uses exponential backoff)
+use_cache = true              # Enable request caching
+cache_ttl = 300               # Cache time-to-live in seconds
+
+[chart]
+dpi = 150                     # Chart resolution
+width = 16                    # Chart width in inches
+height = 10                   # Chart height in inches
+style = "default"             # Matplotlib style
+show_grid = true              # Show grid lines
+default_output_dir = null     # Default directory for charts (null = current directory)
+
+[display]
+color_output = true           # Enable colored terminal output
+verbose = false               # Verbose output mode
