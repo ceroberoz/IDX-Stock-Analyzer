@@ -110,6 +110,30 @@ Examples:
     )
 
     parser.add_argument(
+        "--sentiment-llm",
+        action="store_true",
+        help="Use LLM via OpenAI-compatible API for sentiment (e.g., Ollama)",
+    )
+
+    parser.add_argument(
+        "--llm-model",
+        default="deepseek-v3.1:671b-cloud",
+        help="LLM model name (default: deepseek-v3.1:671b-cloud)",
+    )
+
+    parser.add_argument(
+        "--llm-url",
+        default="http://localhost:11434/v1",
+        help="OpenAI-compatible API base URL (default: http://localhost:11434/v1)",
+    )
+
+    parser.add_argument(
+        "--llm-api-key",
+        default="ollama",
+        help="API key for the LLM endpoint (default: ollama)",
+    )
+
+    parser.add_argument(
         "--cache-info",
         action="store_true",
         help="Show HTTP cache information and exit",
@@ -429,16 +453,29 @@ def main(args: Optional[list] = None) -> int:
         # Non-fatal: continue without cache
         print(f"Warning: Could not initialize cache: {e}", file=sys.stderr)
 
-    if parsed_args.sentiment or parsed_args.sentiment_vader:
+    if (
+        parsed_args.sentiment
+        or parsed_args.sentiment_vader
+        or parsed_args.sentiment_llm
+    ):
         try:
             from .sentiment import SentimentAnalyzer, format_sentiment_report
 
             use_vader = parsed_args.sentiment_vader
-            analyzer = SentimentAnalyzer(use_vader=use_vader)
+            use_llm = parsed_args.sentiment_llm
+            analyzer = SentimentAnalyzer(
+                use_vader=use_vader,
+                use_llm=use_llm,
+                llm_model=parsed_args.llm_model,
+                llm_base_url=parsed_args.llm_url,
+                llm_api_key=parsed_args.llm_api_key,
+            )
 
             if not parsed_args.quiet:
                 print(f"\nAnalyzing news sentiment for {ticker}...")
-                if not use_vader:
+                if use_llm:
+                    print(f"   Using LLM: {parsed_args.llm_model}")
+                elif not use_vader:
                     print("   Loading FinBERT model (first run may take a while)...")
 
             result = analyzer.analyze(ticker, max_articles=20)

@@ -101,6 +101,8 @@ class SentimentAnalyzer:
     It classifies text into: positive, negative, or neutral sentiment.
 
     Alternative: Use VADER for lightweight sentiment without model download.
+    Alternative: Use LLM via OpenAI-compatible API (e.g., Ollama) for
+                 multilingual sentiment that understands Bahasa Indonesia.
 
     Example:
         >>> analyzer = SentimentAnalyzer()
@@ -108,21 +110,41 @@ class SentimentAnalyzer:
         >>> print(f"Sentiment: {result.sentiment_label} ({result.aggregate_score:+.2f})")
     """
 
-    def __init__(self, model_name: str = "ProsusAI/finBERT", use_vader: bool = False):
+    def __init__(
+        self,
+        model_name: str = "ProsusAI/finBERT",
+        use_vader: bool = False,
+        use_llm: bool = False,
+        llm_model: str = "deepseek-v3.1:671b-cloud",
+        llm_base_url: str = "http://localhost:11434/v1",
+        llm_api_key: str = "ollama",
+    ):
         """
         Initialize sentiment analyzer.
 
         Args:
             model_name: HuggingFace model name (default: ProsusAI/finBERT)
             use_vader: If True, use VADER instead of FinBERT (no download, lighter)
+            use_llm: If True, use LLM via OpenAI-compatible API
+            llm_model: LLM model name for the API (default: deepseek-v3.1:671b-cloud)
+            llm_base_url: OpenAI-compatible API base URL (default: Ollama local)
+            llm_api_key: API key (default: "ollama" for local Ollama)
         """
         self.model_name = model_name
         self.use_vader = use_vader
+        self.use_llm = use_llm
+        self.llm_model = llm_model
+        self.llm_base_url = llm_base_url
+        self.llm_api_key = llm_api_key
         self._pipeline = None
         self._analyzer = None
+        self._llm_client = None
 
     def _get_pipeline(self):
         """Lazy load the NLP pipeline"""
+        if self.use_llm:
+            return self._get_llm_client()
+
         if self._pipeline is not None:
             return self._pipeline
 
@@ -155,6 +177,98 @@ class SentimentAnalyzer:
                 )
 
         return self._pipeline
+
+    def _get_llm_client(self):
+        """Get or create the OpenAI-compatible LLM client."""
+        if self._llm_client is not None:
+            return self._llm_client
+
+        from openai import OpenAI
+
+        self._llm_client = OpenAI(
+            base_url=self.llm_base_url,
+            api_key=self.llm_api_key,
+        )
+        logger.info(f"Using LLM sentiment: {self.llm_model} @ {self.llm_base_url}")
+        return self._llm_client
+
+    def _analyze_text_llm(self, headlines: list[str]) -> list[tuple[str, float]]:
+        """
+        Batch-analyze headlines using LLM via OpenAI-compatible API.
+
+        Sends all headlines in a single prompt for efficiency.
+        The LLM understands Bahasa Indonesia natively.
+
+        Returns:
+            List of (label, confidence) tuples, one per headline.
+        """
+        import json as json_mod
+
+        client = self._get_llm_client()
+
+        # Build numbered list
+        numbered = "\n".join(f"{i + 1}. {h}" for i, h in enumerate(headlines))
+
+        prompt = f"""You are a financial sentiment classifier for Indonesian Stock Exchange (IDX) news.
+
+Analyze each headline and classify its sentiment for stock investors.
+
+Headlines:
+{numbered}
+
+Respond with ONLY a JSON array. Each element must be an object with:
+- "label": one of "positive", "negative", or "neutral"
+- "score": confidence from 0.0 to 1.0
+
+Rules:
+- Headlines about price drops, sell-offs, losses, downgrades = negative
+- Headlines about price gains, upgrades, dividends, growth = positive
+- Neutral if purely informational or ambiguous
+- You understand both Bahasa Indonesia and English
+
+Example response for 2 headlines:
+[{{"label":"negative","score":0.85}},{{"label":"positive","score":0.9}}]
+
+Respond with ONLY the JSON array, no other text."""
+
+        try:
+            response = client.chat.completions.create(
+                model=self.llm_model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.1,
+            )
+
+            content = response.choices[0].message.content.strip()
+
+            # Extract JSON array from response (handle markdown code blocks)
+            if "```" in content:
+                content = content.split("```")[1]
+                if content.startswith("json"):
+                    content = content[4:]
+                content = content.strip()
+
+            results = json_mod.loads(content)
+
+            # Validate and normalize
+            parsed: list[tuple[str, float]] = []
+            for r in results:
+                label = r.get("label", "neutral").lower()
+                if label not in ("positive", "negative", "neutral"):
+                    label = "neutral"
+                score = float(r.get("score", 0.5))
+                score = max(0.0, min(1.0, score))
+                parsed.append((label, score))
+
+            # Pad if LLM returned fewer results than headlines
+            while len(parsed) < len(headlines):
+                parsed.append(("neutral", 0.5))
+
+            return parsed[: len(headlines)]
+
+        except Exception as e:
+            logger.warning(f"LLM sentiment analysis failed: {e}")
+            # Fall back to neutral for all
+            return [("neutral", 0.5)] * len(headlines)
 
     def _analyze_text(self, text: str) -> tuple[str, float]:
         """
@@ -294,59 +408,86 @@ class SentimentAnalyzer:
                 total_articles=0,
                 articles=[],
                 analysis_period=period,
-                model_used="vader" if self.use_vader else "finbert",
+                model_used=self._model_label,
             )
 
         # Analyze each article
         analyzed_articles: list[NewsArticle] = []
         pos_count = neg_count = neutral_count = 0
 
-        for item in unique_items:
-            title = item.get("title", "")
-            if not title:
-                continue
+        if self.use_llm:
+            # Batch analysis via LLM (single API call for all headlines)
+            headlines = [
+                item.get("title", "") for item in unique_items if item.get("title")
+            ]
+            items_with_titles = [item for item in unique_items if item.get("title")]
 
-            try:
-                label, score = self._analyze_text(title)
+            if headlines:
+                llm_results = self._analyze_text_llm(headlines)
 
-                # Low-confidence guard for non-English headlines
-                if score < 0.55:
-                    label = "neutral"
+                for item, (label, score) in zip(items_with_titles, llm_results):
+                    title = item.get("title", "")
+                    published_ts = item.get("published") or item.get("date", 0)
+                    try:
+                        published = datetime.fromtimestamp(published_ts)
+                    except (ValueError, TypeError, OSError):
+                        published = datetime.now()
 
-                # Parse timestamp
-                published_ts = item.get("published") or item.get("date", 0)
+                    source = item.get("_source", "Yahoo Finance")
+                    publisher = item.get("publisher", "Unknown")
+                    if source and source != "Yahoo Finance":
+                        publisher = f"{publisher} ({source})"
+
+                    article = NewsArticle(
+                        title=title,
+                        publisher=publisher,
+                        link=item.get("link", ""),
+                        published=published,
+                        sentiment_label=label,  # type: ignore
+                        sentiment_score=score,
+                        related_tickers=item.get("relatedTickers", []),
+                    )
+                    analyzed_articles.append(article)
+        else:
+            # Per-headline analysis via FinBERT or VADER
+            for item in unique_items:
+                title = item.get("title", "")
+                if not title:
+                    continue
+
                 try:
-                    published = datetime.fromtimestamp(published_ts)
-                except (ValueError, TypeError, OSError):
-                    published = datetime.now()
+                    label, score = self._analyze_text(title)
 
-                source = item.get("_source", "Yahoo Finance")
-                publisher = item.get("publisher", "Unknown")
-                if source and source != "Yahoo Finance":
-                    publisher = f"{publisher} ({source})"
+                    # Low-confidence guard for non-English headlines
+                    if score < 0.55:
+                        label = "neutral"
 
-                article = NewsArticle(
-                    title=title,
-                    publisher=publisher,
-                    link=item.get("link", ""),
-                    published=published,
-                    sentiment_label=label,  # type: ignore
-                    sentiment_score=score,
-                    related_tickers=item.get("relatedTickers", []),
-                )
-                analyzed_articles.append(article)
+                    # Parse timestamp
+                    published_ts = item.get("published") or item.get("date", 0)
+                    try:
+                        published = datetime.fromtimestamp(published_ts)
+                    except (ValueError, TypeError, OSError):
+                        published = datetime.now()
 
-                # Count sentiments
-                if label == "positive":
-                    pos_count += 1
-                elif label == "negative":
-                    neg_count += 1
-                else:
-                    neutral_count += 1
+                    source = item.get("_source", "Yahoo Finance")
+                    publisher = item.get("publisher", "Unknown")
+                    if source and source != "Yahoo Finance":
+                        publisher = f"{publisher} ({source})"
 
-            except Exception as e:
-                logger.warning(f"Failed to analyze article: {e}")
-                continue
+                    article = NewsArticle(
+                        title=title,
+                        publisher=publisher,
+                        link=item.get("link", ""),
+                        published=published,
+                        sentiment_label=label,  # type: ignore
+                        sentiment_score=score,
+                        related_tickers=item.get("relatedTickers", []),
+                    )
+                    analyzed_articles.append(article)
+
+                except Exception as e:
+                    logger.warning(f"Failed to analyze article: {e}")
+                    continue
 
         # Sort by published date (newest first)
         analyzed_articles.sort(key=lambda a: a.published, reverse=True)
@@ -381,8 +522,18 @@ class SentimentAnalyzer:
             total_articles=total,
             articles=analyzed_articles,
             analysis_period=period,
-            model_used="vader" if self.use_vader else "finbert",
+            model_used=self._model_label,
         )
+
+    @property
+    def _model_label(self) -> str:
+        """Return the model name for reporting."""
+        if self.use_llm:
+            return f"llm ({self.llm_model})"
+        elif self.use_vader:
+            return "vader"
+        else:
+            return "finbert"
 
     def get_quick_sentiment(self, ticker: str) -> dict[str, Any]:
         """
