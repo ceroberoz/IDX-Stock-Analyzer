@@ -33,10 +33,10 @@ A powerful, user-friendly command-line tool for technical analysis of Indonesian
 ## 📈 Chart Output Example
 
 <p align="center">
-  <img src="docs/bbca_analysis.png" alt="BBCA Technical Analysis Chart" width="800">
+  <img src="TPMA_chart.png" alt="TPMA Technical Analysis Chart" width="800">
 </p>
 
-*Example chart showing BBCA (Bank Central Asia) with Bollinger Bands, Volume Profile, SMA lines, RSI indicator, and support/resistance levels.*
+*Example chart showing TPMA with Bollinger Bands, Volume Profile, SMA lines, RSI indicator, support/resistance levels, and full-width narrative insight box.*
 
 ---
 
@@ -83,44 +83,27 @@ uv run idx-analyzer BBCA --period 1y --chart
 ### Terminal Output
 
 ```
-╔══════════════════════════════════════════════════════════════╗
-║ IDX Stock Analysis:                    BBCA                    ║
-╚══════════════════════════════════════════════════════════════╝
-
-💰 Current Price:        7,200 IDR
-   Daily Change:  🔴      -1.71%
-   Volume:         356,015,300
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📊 52-WEEK RANGE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   High:      9,736  (-26.0% from current)
-   Low:       6,375  (+12.9% from current)
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🟢 SUPPORT LEVELS (Buy Zones)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   1.    7,200  (  0.0% below)  ▪ moderate
-   2.    6,375  ( 11.5% below)  ⭐ strong
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🔴 RESISTANCE LEVELS (Sell/Target Zones)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   1.    7,500  (+  4.2% above)  • weak
-   2.    9,736  (+ 35.2% above)  ⭐ strong
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📊 MOVING AVERAGES
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   SMA 20:      7,569  🔴 -4.9%
-   SMA 50:      7,901  🔴 -8.9%
-   SMA 200:     8,265  🔴 -12.9%
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📈 Trend: 🐻 Bearish (Death Cross Active)
-
-💡 RECOMMENDATION:
-   Bearish. Support at 7,200 (0.0% below).
+╭──────────────────────────────────────────────────────────────────────────────╮
+│ 📊 Market Intel: TPMA                                    Price: 605 (-0.82%) │
+╰──────────────────────────────────────────────────────────────────────────────╯
+  🚀 Metric     💎 Value                                             🚦 Status  
+  Trend         Bullish                               Bullish (Strong Uptrend)  
+  RSI (14)      52.2                                                ⚖️ Neutral  
+  Mov. Avgs     📈 >SMA20, 📈 >SMA50, 📈 >SMA200                                
+                         🧱 Support & Resistance Zones                          
+                                                                                
+  Type                           Level               Distance   Strength        
+ ───────────────────────────────────────────────────────────────────────────── 
+  🛡️ Support                       600             0.8% below   Weak            
+  🛡️ Support                       560             7.4% below   Moderate        
+  🧱 Resistance                    620            +2.5% above   Moderate        
+  🧱 Resistance                    630            +4.1% above   Moderate        
+                                                                                
+🐂 Bullish Vibes Detected! Buyers are in control. 
+🎲 Risk/Reward Ratio: 1:3.0
+╭─────────────────────────────── ⚡ Action Plan ───────────────────────────────╮
+│                       🤔 Bullish. Target: 620 (+2.5%).                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
 ### Understanding Moving Averages
@@ -136,40 +119,43 @@ uv run idx-analyzer BBCA --period 1y --chart
 
 ### Reading the Chart
 
-The generated chart includes an **Insight Box** (upper right) showing:
-- Current trend with visual indicator
-- Key price levels (support/resistance)
-- RSI status (Overbought/Oversold/Neutral)
-- Risk/Reward ratio
-- Clear action recommendation:
-  - **[STRONG BUY]** - Golden Cross active
-  - **[STRONG SELL]** - Death Cross active
-  - **[BUY ZONE]** - Above key MAs
-  - **[SELL ZONE]** - Below key MAs
-  - **[OVERBOUGHT]** - RSI > 70
-  - **[OVERSOLD]** - RSI < 30
+The generated chart includes a **full-width Insight Box** (between price chart and volume) with rich narrative showing:
+- **Header**: Ticker symbol with current price
+- **Price Context**: Position relative to 52-week high/low range
+- **Trend Analysis**: Moving average signals (Golden Cross, Death Cross, etc.)
+- **Momentum**: RSI interpretation with market condition
+- **Support/Resistance**: Key levels with distance percentages and R/R ratio
+- **Action**: Specific trading recommendation based on combined signals
+
+**Recommendation Types:**
+- **BUY** - Strong uptrend, consider dips to support
+- **SELL/AVOID** - Downtrend active, wait for reversal
+- **REDUCE** - Very overbought, consider taking profits
+- **WATCH** - Very oversold, reversal may be near
+- **HOLD/BUY** - Bullish trend, use support for entry
+- **WAIT** - No clear directional bias
 
 ### 📱 Chat Reports
 
-Generate instant, copy-paste ready summaries for messaging apps:
+Generate instant, copy-paste ready summaries for messaging apps with `--chat`:
 
 ```
-📊 PTRO Daily Update
-🟢 Price: 7,450 (-0.00%)
-🌊 Trend: 💤 Neutral
+📊 *BBCA Daily Update*
+🔴 Price: 7,200 (-1.71%)
+🌊 Trend: 🐻 Bearish
 
-📉 Tech Stats:
-• RSI: 42.3
-• Vol: 35.5M
+📉 *Tech Stats:*
+• RSI: 38.8
+• Vol: 356.0M
 
-🎯 Key Levels:
+🎯 *Key Levels:*
 • 🧱 Res: 7,500
-• 🛡️ Sup: 7,400
+• 🛡️ Sup: 7,200
 
-💡 Outlook:
-Range-bound (7,400 - 7,500).
+💡 *Outlook:*
+Bearish. Support at 7,200 (0.0% below).
 
-🚨 Action: WAIT
+🚨 *Action:* WAIT
 ```
 
 ---
