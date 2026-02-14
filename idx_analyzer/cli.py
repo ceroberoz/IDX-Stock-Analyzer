@@ -4,8 +4,20 @@ Command-line interface for IDX Analyzer
 
 import argparse
 import sys
+from pathlib import Path
 from typing import Optional
+
 from .analyzer import IDXAnalyzer
+from .config import Config, load_config, create_default_config
+from .exceptions import (
+    IDXAnalyzerError,
+    format_error_for_user,
+    InvalidTickerError,
+    NetworkError,
+    InsufficientDataError,
+    AnalysisError,
+    ChartError,
+)
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -13,10 +25,8 @@ def create_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="idx-analyzer",
         description="""
-╔══════════════════════════════════════════════════════════════╗
-║              IDX Stock Analyzer v1.0.0                       ║
-║     Indonesian Stock Market Technical Analysis Tool          ║
-╚══════════════════════════════════════════════════════════════╝
+ IDX Stock Analyzer v1.0.0
+ Indonesian Stock Market Technical Analysis Tool
 
 Analyze Indonesian stocks (IDX) and get support/resistance levels,
 trend analysis, and trading recommendations.
@@ -39,9 +49,8 @@ Examples:
     parser.add_argument(
         "-p",
         "--period",
-        default="6mo",
         choices=["1mo", "3mo", "6mo", "1y", "2y", "5y"],
-        help="Historical data period (default: 6mo)",
+        help="Historical data period (default: from config or 6mo)",
     )
 
     parser.add_argument(
@@ -69,6 +78,17 @@ Examples:
         help="Custom chart output filename (default: TICKER_chart.png)",
     )
 
+    parser.add_argument(
+        "--config",
+        help="Path to configuration file",
+    )
+
+    parser.add_argument(
+        "--init-config",
+        action="store_true",
+        help="Create default configuration file and exit",
+    )
+
     parser.add_argument("-v", "--version", action="version", version="%(prog)s 1.0.0")
 
     return parser
@@ -77,7 +97,6 @@ Examples:
 def format_output(result, quiet: bool = False) -> str:
     """Format analysis output"""
     if quiet:
-        # Minimal output for scripting
         lines = [
             f"TICKER:{result.ticker}",
             f"PRICE:{result.current_price:.0f}",
@@ -90,25 +109,22 @@ def format_output(result, quiet: bool = False) -> str:
             lines.append(f"RESISTANCE:{result.resistance_levels[0].level:.0f}")
         return "\n".join(lines)
 
-    # Full formatted output
     output = []
     output.append("")
-    output.append("╔" + "═" * 62 + "╗")
-    output.append("║" + f" IDX Stock Analysis: {result.ticker:^42} " + "║")
-    output.append("╚" + "═" * 62 + "╝")
+    output.append("=" * 64)
+    output.append(f" IDX Stock Analysis: {result.ticker:^42} ")
+    output.append("=" * 64)
     output.append("")
 
-    # Price info
-    change_color = "🟢" if result.change_percent >= 0 else "🔴"
-    output.append(f"💰 Current Price: {result.current_price:>12,.0f} IDR")
+    change_color = "+" if result.change_percent >= 0 else "-"
+    output.append(f"Current Price: {result.current_price:>12,.0f} IDR")
     output.append(f"   Daily Change:  {change_color} {result.change_percent:>+10.2f}%")
     output.append(f"   Volume:        {result.volume:>12,}")
     output.append("")
 
-    # 52-week range
-    output.append("━" * 64)
-    output.append("📊 52-WEEK RANGE")
-    output.append("━" * 64)
+    output.append("-" * 64)
+    output.append("52-WEEK RANGE")
+    output.append("-" * 64)
     from_high = (result.current_price - result.week_52_high) / result.week_52_high * 100
     from_low = (result.current_price - result.week_52_low) / result.week_52_low * 100
     output.append(
@@ -119,20 +135,13 @@ def format_output(result, quiet: bool = False) -> str:
     )
     output.append("")
 
-    # Support levels
-    output.append("━" * 64)
-    output.append("🟢 SUPPORT LEVELS (Buy Zones)")
-    output.append("━" * 64)
+    output.append("-" * 64)
+    output.append("SUPPORT LEVELS (Buy Zones)")
+    output.append("-" * 64)
     if result.support_levels:
         for i, s in enumerate(result.support_levels[:4], 1):
             dist = (result.current_price - s.level) / result.current_price * 100
-            strength_icon = (
-                "⭐"
-                if s.strength == "strong"
-                else "▪"
-                if s.strength == "moderate"
-                else "•"
-            )
+            strength_icon = "*" if s.strength == "strong" else "-"
             output.append(
                 f"   {i}. {s.level:>8,.0f}  ({dist:>5.1f}% below)  {strength_icon} {s.strength}"
             )
@@ -140,20 +149,13 @@ def format_output(result, quiet: bool = False) -> str:
         output.append("   No clear support levels identified")
     output.append("")
 
-    # Resistance levels
-    output.append("━" * 64)
-    output.append("🔴 RESISTANCE LEVELS (Sell/Target Zones)")
-    output.append("━" * 64)
+    output.append("-" * 64)
+    output.append("RESISTANCE LEVELS (Sell/Target Zones)")
+    output.append("-" * 64)
     if result.resistance_levels:
         for i, r in enumerate(result.resistance_levels[:4], 1):
             dist = (r.level - result.current_price) / result.current_price * 100
-            strength_icon = (
-                "⭐"
-                if r.strength == "strong"
-                else "▪"
-                if r.strength == "moderate"
-                else "•"
-            )
+            strength_icon = "*" if r.strength == "strong" else "-"
             output.append(
                 f"   {i}. {r.level:>8,.0f}  (+{dist:>5.1f}% above)  {strength_icon} {r.strength}"
             )
@@ -161,22 +163,22 @@ def format_output(result, quiet: bool = False) -> str:
         output.append("   No clear resistance levels identified")
     output.append("")
 
-    output.append("━" * 64)
-    output.append("📊 MOVING AVERAGES")
-    output.append("━" * 64)
+    output.append("-" * 64)
+    output.append("MOVING AVERAGES")
+    output.append("-" * 64)
 
     sma_20_pct = (result.current_price - result.sma_20) / result.sma_20 * 100
     sma_50_pct = (result.current_price - result.sma_50) / result.sma_50 * 100
 
-    icon_20 = "🟢" if result.current_price > result.sma_20 else "🔴"
-    icon_50 = "🟢" if result.current_price > result.sma_50 else "🔴"
+    icon_20 = ">" if result.current_price > result.sma_20 else "<"
+    icon_50 = ">" if result.current_price > result.sma_50 else "<"
 
     output.append(f"   SMA 20: {result.sma_20:>10,.0f}  {icon_20} {sma_20_pct:+.1f}%")
     output.append(f"   SMA 50: {result.sma_50:>10,.0f}  {icon_50} {sma_50_pct:+.1f}%")
 
     if result.sma_200:
         sma_200_pct = (result.current_price - result.sma_200) / result.sma_200 * 100
-        icon_200 = "🟢" if result.current_price > result.sma_200 else "🔴"
+        icon_200 = ">" if result.current_price > result.sma_200 else "<"
         output.append(
             f"   SMA 200: {result.sma_200:>9,.0f}  {icon_200} {sma_200_pct:+.1f}%"
         )
@@ -184,25 +186,25 @@ def format_output(result, quiet: bool = False) -> str:
     output.append("")
 
     if result.bb_middle is not None:
-        output.append("━" * 64)
-        output.append("📊 BOLLINGER BANDS (20, 2σ)")
-        output.append("━" * 64)
-        bb_position_icon = {
-            "above_upper": "🔴 Above Upper (Overbought)",
-            "near_upper": "🟡 Near Upper (Extended)",
-            "middle": "⚪ Middle (Neutral)",
-            "near_lower": "🟡 Near Lower (Oversold)",
-            "below_lower": "🟢 Below Lower (Oversold)",
-        }.get(result.bb_position, "⚪ Middle")
+        output.append("-" * 64)
+        output.append("BOLLINGER BANDS (20, 2)")
+        output.append("-" * 64)
+        bb_position_text = {
+            "above_upper": "Above Upper (Overbought)",
+            "near_upper": "Near Upper (Extended)",
+            "middle": "Middle (Neutral)",
+            "near_lower": "Near Lower (Oversold)",
+            "below_lower": "Below Lower (Oversold)",
+        }.get(result.bb_position, "Middle")
         output.append(f"   Upper:  {result.bb_upper:>10,.0f}")
-        output.append(f"   Middle: {result.bb_middle:>10,.0f}  {bb_position_icon}")
+        output.append(f"   Middle: {result.bb_middle:>10,.0f}  {bb_position_text}")
         output.append(f"   Lower:  {result.bb_lower:>10,.0f}")
         output.append("")
 
     if result.vp_poc is not None:
-        output.append("━" * 64)
-        output.append("📊 VOLUME PROFILE")
-        output.append("━" * 64)
+        output.append("-" * 64)
+        output.append("VOLUME PROFILE")
+        output.append("-" * 64)
         output.append(f"   POC (Point of Control): {result.vp_poc:>10,.0f}")
         output.append(f"   Value Area High:        {result.vp_value_area_high:>10,.0f}")
         output.append(f"   Value Area Low:         {result.vp_value_area_low:>10,.0f}")
@@ -214,21 +216,18 @@ def format_output(result, quiet: bool = False) -> str:
                 <= result.vp_value_area_high
             )
             va_status = "Inside Value Area" if price_in_va else "Outside Value Area"
-            va_icon = "🟢" if price_in_va else "🟡"
+            va_icon = ">" if price_in_va else "~"
             output.append(f"   Current Position:       {va_icon} {va_status}")
         output.append("")
 
-    # Trend and recommendation
-    output.append("━" * 64)
-    trend_icon = (
-        "🐂" if "Bull" in result.trend else "🐻" if "Bear" in result.trend else "⚖"
-    )
-    output.append(f"📈 Trend: {trend_icon} {result.trend}")
+    output.append("-" * 64)
+    trend_icon = "BULL" if "Bull" in result.trend else "BEAR" if "Bear" in result.trend else "NEUTRAL"
+    output.append(f"Trend: {trend_icon} {result.trend}")
     output.append("")
-    output.append("💡 RECOMMENDATION:")
+    output.append("RECOMMENDATION:")
     output.append(f"   {result.recommendation}")
     output.append("")
-    output.append("━" * 64)
+    output.append("-" * 64)
     output.append("")
 
     return "\n".join(output)
@@ -241,25 +240,21 @@ def export_to_csv(result, filepath: str):
     with open(filepath, "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(["Type", "Level", "Distance %", "Strength", "Description"])
-
-        # Current price
         writer.writerow(["Current", result.current_price, "", "", ""])
 
-        # Supports
         for s in result.support_levels:
             dist = (result.current_price - s.level) / result.current_price * 100
             writer.writerow(
                 ["Support", s.level, f"{dist:.2f}", s.strength, s.description]
             )
 
-        # Resistances
         for r in result.resistance_levels:
             dist = (r.level - result.current_price) / result.current_price * 100
             writer.writerow(
                 ["Resistance", r.level, f"{dist:.2f}", r.strength, r.description]
             )
 
-    print(f"✅ Exported to: {filepath}")
+    print(f"Exported to: {filepath}")
 
 
 def export_to_json(result, filepath: str):
@@ -318,7 +313,7 @@ def export_to_json(result, filepath: str):
     with open(filepath, "w") as f:
         json.dump(data, f, indent=2)
 
-    print(f"✅ Exported to: {filepath}")
+    print(f"Exported to: {filepath}")
 
 
 def main(args: Optional[list] = None) -> int:
@@ -326,26 +321,41 @@ def main(args: Optional[list] = None) -> int:
     parser = create_parser()
     parsed_args = parser.parse_args(args)
 
-    # Format ticker
+    if parsed_args.init_config:
+        try:
+            config_path = create_default_config()
+            print(f"Created default config at: {config_path}")
+            return 0
+        except Exception as e:
+            print(f"Error creating config: {e}", file=sys.stderr)
+            return 1
+
+    config: Optional[Config] = None
+    if parsed_args.config:
+        try:
+            config = load_config(parsed_args.config)
+        except Exception as e:
+            print(f"Error loading config: {e}", file=sys.stderr)
+            return 1
+
     ticker = parsed_args.ticker
 
     try:
-        # Create analyzer
-        analyzer = IDXAnalyzer(ticker)
+        analyzer = IDXAnalyzer(ticker, config=config)
+
+        period = parsed_args.period
+        if period is None and config:
+            period = config.analysis.default_period
+        elif period is None:
+            period = "6mo"
 
         if not parsed_args.quiet:
-            print(f"\n🔍 Analyzing {analyzer.ticker}...")
-            print(f"   Fetching {parsed_args.period} of historical data...")
+            print(f"\nAnalyzing {analyzer.ticker}...")
+            print(f"   Fetching {period} of historical data...")
 
-        # Fetch data
-        if not analyzer.fetch_data(period=parsed_args.period):
-            print(f"❌ Error: Could not fetch data for {ticker}", file=sys.stderr)
-            return 1
-
-        # Analyze
+        analyzer.fetch_data(period=period)
         result = analyzer.analyze()
 
-        # Generate chart if requested
         if parsed_args.chart:
             if not parsed_args.quiet:
                 print(f"   Generating chart...")
@@ -353,9 +363,8 @@ def main(args: Optional[list] = None) -> int:
                 output_path=parsed_args.chart_output, show=False
             )
             if not parsed_args.quiet:
-                print(f"✅ Chart saved: {chart_path}")
+                print(f"Chart saved: {chart_path}")
 
-        # Export if requested
         if parsed_args.export:
             if parsed_args.output:
                 filepath = parsed_args.output
@@ -367,13 +376,15 @@ def main(args: Optional[list] = None) -> int:
             else:
                 export_to_json(result, filepath)
 
-        # Print output
         print(format_output(result, quiet=parsed_args.quiet))
 
         return 0
 
+    except IDXAnalyzerError as e:
+        print(format_error_for_user(e), file=sys.stderr)
+        return 1
     except Exception as e:
-        print(f"❌ Error: {e}", file=sys.stderr)
+        print(f"Unexpected error: {e}", file=sys.stderr)
         return 1
 
 
