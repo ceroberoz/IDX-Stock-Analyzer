@@ -120,6 +120,10 @@ uv run idx-analyzer <TICKER> [OPTIONS]
 | `--chat` | | Generate compact chat report | `--chat` |
 | `--config` | | Custom configuration file | `--config myconfig.toml` |
 | `--init-config` | | Create default config file | `--init-config` |
+| `--sentiment` | | Analyze news sentiment (FinBERT) | `--sentiment` |
+| `--sentiment-vader` | | Lightweight VADER sentiment | `--sentiment-vader` |
+| `--cache-info` | | Show HTTP cache information | `--cache-info` |
+| `--clear-cache` | | Clear HTTP cache | `--clear-cache` |
 | `--quiet` | `-q` | Minimal output for scripting | `--quiet` |
 | `--version` | `-v` | Show version | `--version` |
 
@@ -157,6 +161,24 @@ uv run idx-analyzer BBCA --init-config
 uv run idx-analyzer BBCA --config myconfig.toml
 ```
 
+### Output File Organization
+
+Charts and exports are automatically organized by ticker and date:
+
+```
+charts/
+└── BBCA/
+    └── 2026-02-14/
+        └── BBCA_chart.png
+
+exports/
+└── BBCA/
+    └── 2026-02-14/
+        └── BBCA_analysis.json
+```
+
+This keeps your workspace clean when analyzing multiple stocks over time.
+
 ---
 
 ## Configuration
@@ -187,7 +209,7 @@ timeout = 30                  # Request timeout (seconds)
 max_retries = 3               # Number of retries for failed requests
 retry_delay = 1.0             # Initial retry delay (seconds)
 use_cache = true              # Enable request caching
-cache_ttl = 300               # Cache TTL (seconds)
+cache_ttl = 86400             # Cache TTL in seconds (24 hours)
 
 [chart]
 dpi = 150                     # Chart resolution

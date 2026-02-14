@@ -21,6 +21,31 @@ A powerful, user-friendly command-line tool for technical analysis of Indonesian
 
 ---
 
+## 📂 Project Structure
+
+```
+IDX-Stock-Analyzer/
+├── idx_analyzer/           # Main package
+│   ├── __init__.py
+│   ├── analyzer.py         # Core analysis engine
+│   ├── cache.py            # HTTP cache management
+│   ├── cli.py              # Command-line interface
+│   ├── config.py           # Configuration management
+│   ├── exceptions.py       # Custom exceptions
+│   └── sentiment.py        # News sentiment analysis
+├── charts/                 # Generated charts (gitignored)
+├── exports/                # Generated exports (gitignored)
+├── docs/                   # Documentation
+├── examples/               # Example scripts
+├── tests/                  # Test files
+├── pyproject.toml          # Project configuration
+├── uv.lock                 # Dependency lock file
+├── .python-version         # Python version pin
+└── README.md
+```
+
+---
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -48,6 +73,12 @@ uv run idx-analyzer BBCA --chart
 # 1 year of data for SMA 200
 uv run idx-analyzer BBCA --period 1y --chart
 ```
+
+### Output Files
+
+Generated files are organized by ticker and date:
+- **Charts**: `charts/BBCA/2026-02-14/BBCA_chart.png`
+- **Exports**: `exports/BBCA/2026-02-14/BBCA_analysis.json`
 
 ---
 
@@ -108,7 +139,7 @@ Any stock listed on the Indonesia Stock Exchange (IDX). Popular tickers:
 
 See [docs/ROADMAP.md](docs/ROADMAP.md) for the complete development plan.
 
-**Current Version:** 0.1.0 | **Yahoo Finance API Utilization:** ~30%
+**Current Version:** 1.0.0 | **Yahoo Finance API Utilization:** ~30%
 
 ### Phase 1: Core Enhancements (Q1 2026)
 - Intraday analysis (5m, 15m, 30m, 1h intervals)

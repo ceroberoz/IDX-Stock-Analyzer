@@ -4,6 +4,7 @@ Command-line interface for IDX Analyzer
 
 import argparse
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -76,7 +77,7 @@ Examples:
 
     parser.add_argument(
         "--chart-output",
-        help="Custom chart output filename (default: TICKER_chart.png)",
+        help="Custom chart output filename (default: charts/TICKER/DATE/TICKER_chart.png)",
     )
 
     parser.add_argument(
@@ -123,6 +124,19 @@ Examples:
     parser.add_argument("-v", "--version", action="version", version="%(prog)s 1.0.0")
 
     return parser
+
+
+def get_output_path(base_folder: str, ticker: str, filename: str) -> str:
+    """Generate structured output path: base_folder/ticker/YYYY-MM-DD/filename"""
+    today = datetime.now().strftime("%Y-%m-%d")
+    # Clean ticker just in case
+    clean_ticker = ticker.replace("IDX:", "").replace(".JK", "")
+
+    # Structure: base_folder/ticker/date/filename
+    target_dir = Path(base_folder) / clean_ticker / today
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    return str(target_dir / filename)
 
 
 def format_output(result, quiet: bool = False) -> str:
@@ -432,7 +446,12 @@ def main(args: Optional[list] = None) -> int:
             if parsed_args.export:
                 import json
 
-                filepath = parsed_args.output or f"{ticker}_sentiment.json"
+                if parsed_args.output:
+                    filepath = parsed_args.output
+                else:
+                    filename = f"{ticker}_sentiment.json"
+                    filepath = get_output_path("exports", ticker, filename)
+
                 with open(filepath, "w") as f:
                     json.dump(result.to_dict(), f, indent=2)
                 print(f"Exported to: {filepath}")
@@ -475,9 +494,13 @@ def main(args: Optional[list] = None) -> int:
         if parsed_args.chart:
             if not parsed_args.quiet:
                 print(f"   Generating chart...")
-            chart_path = analyzer.generate_chart(
-                output_path=parsed_args.chart_output, show=False
-            )
+
+            output_path = parsed_args.chart_output
+            if not output_path:
+                filename = f"{analyzer.ticker.replace('.JK', '')}_chart.png"
+                output_path = get_output_path("charts", analyzer.ticker, filename)
+
+            chart_path = analyzer.generate_chart(output_path=output_path, show=False)
             if not parsed_args.quiet:
                 print(f"Chart saved: {chart_path}")
 
@@ -485,7 +508,8 @@ def main(args: Optional[list] = None) -> int:
             if parsed_args.output:
                 filepath = parsed_args.output
             else:
-                filepath = f"{result.ticker}_analysis.{parsed_args.export}"
+                filename = f"{result.ticker}_analysis.{parsed_args.export}"
+                filepath = get_output_path("exports", result.ticker, filename)
 
             if parsed_args.export == "csv":
                 export_to_csv(result, filepath)

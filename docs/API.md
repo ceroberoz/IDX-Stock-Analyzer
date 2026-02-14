@@ -331,7 +331,7 @@ NetworkConfig(
     max_retries: int = 3,             # Number of retries
     retry_delay: float = 1.0,         # Initial retry delay
     use_cache: bool = True,           # Enable caching
-    cache_ttl: int = 300              # Cache TTL (seconds)
+    cache_ttl: int = 86400            # Cache TTL in seconds (24 hours)
 )
 ```
 

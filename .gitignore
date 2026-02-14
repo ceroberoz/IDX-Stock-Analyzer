@@ -1,5 +1,5 @@
 # =============================================================================
-# IDX Stock Analyzer - Comprehensive .gitignore
+# IDX Stock Analyzer - .gitignore
 # =============================================================================
 
 # =============================================================================
@@ -11,106 +11,32 @@ __pycache__/
 *.so
 .Python
 build/
-develop-eggs/
 dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
 *.egg-info/
-.installed.cfg
 *.egg
-MANIFEST
-pip-log.txt
-pip-delete-this-directory.txt
 
 # =============================================================================
 # Virtual Environments
 # =============================================================================
+.venv/
 .env
-.venv
 env/
 venv/
-ENV/
-env.bak/
-venv.bak/
-.python-version
 
 # =============================================================================
 # IDEs and Editors
 # =============================================================================
-# VS Code
 .vscode/
-*.code-workspace
-.history/
-
-# PyCharm / IntelliJ
 .idea/
-*.iml
-*.iws
-*.ipr
-out/
-
-# Sublime Text
-*.sublime-project
-*.sublime-workspace
-
-# Vim
 *.swp
 *.swo
 *~
-.netrwhist
 
-# Emacs
-*~
-\#*\#
-/.emacs.desktop
-/.emacs.desktop.lock
-*.elc
-
-# macOS
+# =============================================================================
+# OS Files
+# =============================================================================
 .DS_Store
-.AppleDouble
-.LSOverride
-Icon
-._*
-.DocumentRevisions-V100
-.fseventsd
-.Spotlight-V100
-.TemporaryItems
-.Trashes
-.VolumeIcon.icns
-.com.apple.timemachine.donotpresent
-.AppleDB
-.AppleDesktop
-Network Trash Folder
-Temporary Items
-.apdisk
-
-# Windows
 Thumbs.db
-Thumbs.db:encryptable
-ehthumbs.db
-ehthumbs_vista.db
-*.stackdump
-[Dd]esktop.ini
-$RECYCLE.BIN/
-*.cab
-*.msi
-*.msix
-*.msm
-*.msp
-*.lnk
-
-# Linux
-*~
-.nfs*
 
 # =============================================================================
 # Testing and Coverage
@@ -120,91 +46,52 @@ htmlcov/
 .nox/
 .coverage
 .coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
 .pytest_cache/
-cover/
-*.log
+coverage.xml
 
 # =============================================================================
-# Type Checking
+# Type Checking and Linting
 # =============================================================================
 .mypy_cache/
-.dmypy.json
-dmypy.json
-.pyre/
-.pytype/
-
-# =============================================================================
-# Jupyter Notebook
-# =============================================================================
-.ipynb_checkpoints
-*.ipynb
-
-# =============================================================================
-# Data and Cache Files
-# =============================================================================
-# SQLite databases
-*.sqlite
-*.sqlite3
-*.db
-
-# Cache files
-idx_analyzer_cache.sqlite
-.cache/
-
-# Generated data files
-*.csv
-*.json
-!example*.json
-!package*.json
-!tsconfig*.json
-
-# =============================================================================
-# Application Specific
-# =============================================================================
-# Generated charts (keep examples, ignore user-generated)
-charts/*.png
-!charts/README.md
-!charts/.gitkeep
-
-# Export files
-*_analysis.csv
-*_analysis.json
-
-# Temporary files
-tmp/
-temp/
-*.tmp
-
-# =============================================================================
-# UV and Package Management
-# =============================================================================
-uv.lock
-!uv.lock  # Uncomment if you want to commit lock file
-
-# =============================================================================
-# Ruff (Python linter/formatter)
-# =============================================================================
 .ruff_cache/
 
 # =============================================================================
-# Security - Never commit these!
+# Generated Artifacts (charts, exports, cache)
 # =============================================================================
-# API Keys and Secrets
+# Chart output (structured: charts/TICKER/DATE/*.png)
+charts/*
+!charts/.gitkeep
+
+# Export output (structured: exports/TICKER/DATE/*.csv|*.json)
+exports/*
+!exports/.gitkeep
+
+# Root-level artifacts from ad-hoc runs
+*_analysis.csv
+*_analysis.json
+*_chart.png
+*_sentiment.json
+
+# =============================================================================
+# Cache
+# =============================================================================
+.cache/
+*.sqlite
+*.sqlite3
+
+# =============================================================================
+# Local Configuration (user-specific, not the example)
+# =============================================================================
+idx-analyzer.toml
+
+# =============================================================================
+# Security - Never commit these
+# =============================================================================
 *.pem
 *.key
 .env.local
 .env.*.local
-secrets.yaml
-secrets.yml
-secrets.json
-config.local.yaml
-config.local.yml
+secrets.*
 
 # =============================================================================
 # Documentation Build
@@ -216,6 +103,4 @@ site/
 # Backup Files
 # =============================================================================
 *.bak
-*.backup
-*.old
 *.orig

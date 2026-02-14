@@ -234,6 +234,8 @@ Before submitting a PR, test:
 - [ ] Error handling works (try invalid ticker like `AAPL`)
 - [ ] Config creation works: `uv run idx-analyzer BBCA --init-config`
 - [ ] Custom config works: `uv run idx-analyzer BBCA --config custom.toml`
+- [ ] Chart outputs to `charts/TICKER/DATE/`: `uv run idx-analyzer BBCA --chart` then check `charts/BBCA/`
+- [ ] Export outputs to `exports/TICKER/DATE/`: `uv run idx-analyzer BBCA --export json` then check `exports/BBCA/`
 
 ### Test Stocks
 
@@ -250,24 +252,29 @@ Use these stocks for testing different scenarios:
 
 ```
 IDX-Stock-Analyzer/
-├── idx_analyzer/          # Main package
+├── idx_analyzer/              # Main package
 │   ├── __init__.py
-│   ├── analyzer.py        # Core analysis logic
-│   ├── cli.py             # CLI interface
-│   ├── config.py          # Configuration management
-│   └── exceptions.py      # Custom exceptions
-├── docs/                  # Documentation
-│   ├── ROADMAP.md         # Development roadmap
-│   ├── USAGE.md           # User guide
-│   ├── API.md             # Python API reference
-│   └── TECHNICAL_ANALYSIS.md  # TA explanations
-├── examples/              # Example scripts
-├── tests/                 # Test files (future)
-├── charts/                # Generated charts (gitignored)
-├── README.md              # Main documentation
-├── CONTRIBUTING.md        # This file
-├── pyproject.toml         # Project config
-└── LICENSE                # MIT License
+│   ├── analyzer.py            # Core analysis engine
+│   ├── cache.py               # HTTP cache management
+│   ├── cli.py                 # CLI interface
+│   ├── config.py              # Configuration management
+│   ├── exceptions.py          # Custom exceptions
+│   └── sentiment.py           # News sentiment analysis
+├── charts/                    # Generated charts (gitignored content)
+├── exports/                   # Generated exports (gitignored content)
+├── docs/                      # Documentation
+│   ├── API.md                 # Python API reference
+│   ├── ROADMAP.md             # Development roadmap
+│   ├── TECHNICAL_ANALYSIS.md  # TA explanations
+│   └── USAGE.md               # User guide
+├── examples/                  # Example scripts
+├── tests/                     # Test files
+├── pyproject.toml             # Project & build configuration
+├── uv.lock                    # Dependency lock file
+├── .python-version            # Python version pin
+├── README.md                  # Main documentation
+├── CONTRIBUTING.md            # Contribution guidelines
+└── LICENSE                    # MIT License
 ```
 
 ---
