@@ -596,6 +596,89 @@ class IDXAnalyzer:
 
         return " | ".join(lines)
 
+    def _generate_narrative(
+        self,
+        result: AnalysisResult,
+        trend_emoji: str,
+        nearest_support: float,
+        nearest_resistance: float,
+        risk_reward: float,
+    ) -> str:
+        """Generate narrative text based on analysis results"""
+        current = result.current_price
+        rsi = result.rsi
+        trend = result.trend
+        sections = [f"{trend_emoji} {result.ticker} @ {current:,.0f}"]
+
+        from_low = (current - result.week_52_low) / result.week_52_low * 100
+        from_high = (current - result.week_52_high) / result.week_52_high * 100
+
+        if "Bull" in trend:
+            price_ctx = f"Trading +{from_low:.1f}% above 52W low"
+            if from_high > -20:
+                price_ctx += f", {-from_high:.1f}% below 52W high"
+        elif "Bear" in trend:
+            price_ctx = f"Trading {-from_high:.1f}% below 52W high"
+            if from_low > 20:
+                price_ctx += f", +{from_low:.1f}% above 52W low"
+        else:
+            price_ctx = f"Trading in middle of 52W range"
+        sections.append(price_ctx)
+
+        if "Golden Cross" in trend:
+            trend_text = "Strong uptrend: SMA 50 crossed above SMA 200"
+        elif "Death Cross" in trend:
+            trend_text = "Strong downtrend: SMA 50 crossed below SMA 200"
+        elif "Bullish" in trend:
+            trend_text = "Price above key moving averages, bullish bias"
+        elif "Bearish" in trend:
+            trend_text = "Price below key moving averages, bearish bias"
+        else:
+            trend_text = "Mixed signals from moving averages"
+        sections.append(trend_text)
+
+        if rsi > 70:
+            rsi_text = f"Overbought (RSI {rsi:.1f}) - Potential pullback"
+        elif rsi < 30:
+            rsi_text = f"Oversold (RSI {rsi:.1f}) - Potential bounce"
+        elif 50 < rsi <= 70:
+            rsi_text = f"Bullish momentum (RSI {rsi:.1f})"
+        elif 30 <= rsi < 50:
+            rsi_text = f"Bearish momentum (RSI {rsi:.1f})"
+        else:
+            rsi_text = f"Neutral momentum (RSI {rsi:.1f})"
+        sections.append(rsi_text)
+
+        support_dist = (current - nearest_support) / current * 100
+        resist_dist = (nearest_resistance - current) / current * 100
+
+        sr_text = f"Support at {nearest_support:,.0f} ({support_dist:.1f}% below)"
+        if risk_reward > 0:
+            sr_text += f" | Target at {nearest_resistance:,.0f} (+{resist_dist:.1f}%, R/R 1:{risk_reward:.1f})"
+        sections.append(sr_text)
+
+        if "Golden Cross" in trend and rsi < 70:
+            action = "BUY: Strong uptrend, consider dips to support"
+        elif "Death Cross" in trend and rsi > 30:
+            action = "SELL/AVOID: Downtrend active, wait for reversal"
+        elif "Bull" in trend and rsi < 30:
+            action = "BUY: Bullish trend with oversold bounce setup"
+        elif "Bear" in trend and rsi > 70:
+            action = "SELL: Bearish trend with overbought pullback"
+        elif rsi > 75:
+            action = "REDUCE: Very overbought, consider taking profits"
+        elif rsi < 25:
+            action = "WATCH: Very oversold, reversal may be near"
+        elif "Bull" in trend:
+            action = "HOLD/BUY: Bullish trend, use support for entry"
+        elif "Bear" in trend:
+            action = "AVOID/HOLD: Bearish trend, wait for better entry"
+        else:
+            action = "WAIT: No clear directional bias"
+        sections.append(f"Action: {action}")
+
+        return "\n".join(sections)
+
     def generate_chart(
         self, output_path: Optional[str] = None, show: bool = False
     ) -> str:
@@ -732,31 +815,12 @@ class IDXAnalyzer:
                 else 0
             )
 
-            insight_text = (
-                f"[{trend_emoji}] TREND: {result.trend}\n"
-                f"Price: {result.current_price:,.0f}\n"
-                f"RSI: {result.rsi:.1f} ({'Overbought' if result.rsi > 70 else 'Oversold' if result.rsi < 30 else 'Neutral'})\n"
-                f"Target: {nearest_resistance:,.0f} (+{((nearest_resistance / result.current_price - 1) * 100):.1f}%)\n"
-                f"Support: {nearest_support:,.0f} ({((nearest_support / result.current_price - 1) * 100):.1f}%)\n"
+            # Generate narrative based on analysis
+            narrative = self._generate_narrative(
+                result, trend_emoji, nearest_support, nearest_resistance, risk_reward
             )
 
-            if risk_reward > 0:
-                insight_text += f"R/R Ratio: 1:{risk_reward:.1f}\n"
-
-            if "Golden Cross" in result.trend:
-                insight_text += "\n[STRONG BUY]\nSMA 50 > 200\nUptrend Confirmed"
-            elif "Death Cross" in result.trend:
-                insight_text += "\n[STRONG SELL]\nSMA 50 < 200\nDowntrend Active"
-            elif "Bull" in result.trend and result.rsi < 70:
-                insight_text += "\n[BUY ZONE]\nAbove key MAs\nMomentum positive"
-            elif "Bear" in result.trend and result.rsi > 30:
-                insight_text += "\n[SELL ZONE]\nBelow key MAs\nMomentum negative"
-            elif result.rsi > 70:
-                insight_text += "\n[OVERBOUGHT]\nConsider taking profits"
-            elif result.rsi < 30:
-                insight_text += "\n[OVERSOLD]\nPotential bounce coming"
-            else:
-                insight_text += "\n[WAIT]\nNo clear signal"
+            insight_text = narrative
 
             ax_insight = fig.add_subplot(gs[1, :])
             ax_insight.axis("off")
