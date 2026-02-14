@@ -24,9 +24,7 @@ from .exceptions import (
 class SupportResistance:
     """Support and resistance levels"""
 
-    def __init__(
-        self, level: float, type: str, strength: str, description: str
-    ):
+    def __init__(self, level: float, type: str, strength: str, description: str):
         self.level = float(level)
         self.type = type
         self.strength = strength
@@ -488,9 +486,7 @@ class IDXAnalyzer:
         try:
             current = float(self.hist["Close"].iloc[-1])
             prev_close = (
-                float(self.hist["Close"].iloc[-2])
-                if len(self.hist) > 1
-                else current
+                float(self.hist["Close"].iloc[-2]) if len(self.hist) > 1 else current
             )
             change_pct = (current - prev_close) / prev_close * 100
 
@@ -506,9 +502,7 @@ class IDXAnalyzer:
             sma_20 = float(sma_20_series.iloc[-1])
             sma_50 = float(sma_50_series.iloc[-1])
             sma_200 = (
-                float(sma_200_series.iloc[-1])
-                if sma_200_series is not None
-                else None
+                float(sma_200_series.iloc[-1]) if sma_200_series is not None else None
             )
 
             bb_middle_series, bb_upper_series, bb_lower_series = (
@@ -530,9 +524,7 @@ class IDXAnalyzer:
                 elif current < bb_lower + bb_band_width * 0.2:
                     bb_position = "near_lower"
 
-            vp_poc, vp_va_high, vp_va_low, vp_total = (
-                self._calculate_volume_profile()
-            )
+            vp_poc, vp_va_high, vp_va_low, vp_total = self._calculate_volume_profile()
 
             supports = self._find_support_levels()
             resistances = self._find_resistance_levels()
@@ -623,9 +615,7 @@ class IDXAnalyzer:
                 output_path = f"{self.ticker.replace('.JK', '')}_chart.png"
 
             cfg = self.config.chart
-            fig = plt.figure(
-                figsize=(cfg.width, cfg.height), layout="constrained"
-            )
+            fig = plt.figure(figsize=(cfg.width, cfg.height), layout="constrained")
             gs = fig.add_gridspec(3, 2, height_ratios=[4, 1, 1], width_ratios=[5, 1])
 
             ax1 = fig.add_subplot(gs[0, 0])
@@ -641,9 +631,7 @@ class IDXAnalyzer:
                 color="#2E86AB",
                 linewidth=2,
             )
-            ax1.axhline(
-                y=result.current_price, color="black", linestyle="-", alpha=0.5
-            )
+            ax1.axhline(y=result.current_price, color="black", linestyle="-", alpha=0.5)
 
             sma_20_series = self._calculate_sma(20)
             sma_50_series = self._calculate_sma(50)
@@ -770,11 +758,11 @@ class IDXAnalyzer:
 
             ax1.text(
                 0.98,
-                0.98,
+                0.25,
                 insight_text,
                 transform=ax1.transAxes,
                 fontsize=9,
-                verticalalignment="top",
+                verticalalignment="bottom",
                 horizontalalignment="right",
                 bbox=dict(
                     boxstyle="round,pad=0.5",
@@ -860,9 +848,7 @@ class IDXAnalyzer:
                 )
 
             ax2 = fig.add_subplot(gs[1, 0], sharex=ax1)
-            ax2.bar(
-                self.hist.index, self.hist["Volume"], color="gray", alpha=0.5
-            )
+            ax2.bar(self.hist.index, self.hist["Volume"], color="gray", alpha=0.5)
 
             ax3 = fig.add_subplot(gs[2, 0], sharex=ax1)
             rsi = self._calculate_rsi()
@@ -911,9 +897,7 @@ class IDXAnalyzer:
                     candle_volume = float(row["Volume"])
 
                     low_bin_idx = np.searchsorted(bins, candle_low, side="left") - 1
-                    high_bin_idx = (
-                        np.searchsorted(bins, candle_high, side="right") - 1
-                    )
+                    high_bin_idx = np.searchsorted(bins, candle_high, side="right") - 1
 
                     low_bin_idx = max(0, min(low_bin_idx, num_bins - 1))
                     high_bin_idx = max(0, min(high_bin_idx, num_bins - 1))
