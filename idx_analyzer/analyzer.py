@@ -757,13 +757,13 @@ class IDXAnalyzer:
                 insight_text += "\n[WAIT]\nNo clear signal"
 
             ax1.text(
-                0.98,
-                0.25,
+                0.02,
+                0.02,
                 insight_text,
                 transform=ax1.transAxes,
                 fontsize=9,
                 verticalalignment="bottom",
-                horizontalalignment="right",
+                horizontalalignment="left",
                 bbox=dict(
                     boxstyle="round,pad=0.5",
                     facecolor="white",
