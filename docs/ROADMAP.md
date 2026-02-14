@@ -22,6 +22,7 @@ This roadmap outlines the development phases for IDX Stock Analyzer, leveraging 
 |---------|---------------------------|--------|----------|
 | **Intraday Analysis** | `history(interval="15m")` | Planned | High |
 | **Batch Portfolio Analysis** | `yf.download()` | Planned | High |
+| **Sentiment Analysis** | `Ticker.news` + FinBERT | 🚧 In Progress | High |
 | **Dividend Calendar** | `Ticker.dividends` | Planned | Medium |
 | **Stock Splits** | `Ticker.splits` | Planned | Medium |
 | **Excel Export** | Current data + `pd.ExcelWriter` | Planned | Medium |
@@ -29,6 +30,8 @@ This roadmap outlines the development phases for IDX Stock Analyzer, leveraging 
 **Deliverables:**
 - [ ] Add `--interval` flag (1m, 5m, 15m, 30m, 1h, 1d)
 - [ ] Multi-ticker analysis: `idx-analyzer BBCA BBRI TLKM`
+- [ ] Sentiment analysis module (Yahoo news + FinBERT) - ✅ **No API key required**
+- [ ] `--sentiment` CLI flag for news sentiment scoring
 - [ ] Dividend yield tracking and alerts
 - [ ] Export to Excel format
 - [ ] Intraday chart generation
@@ -129,6 +132,83 @@ This roadmap outlines the development phases for IDX Stock Analyzer, leveraging 
 
 ---
 
+## Alternative Data Sources
+
+Beyond Yahoo Finance, several alternative data sources are available for IDX (Indonesia Stock Exchange) data:
+
+### Official Sources
+| Source | Free Tier | Data | Best For |
+|--------|-----------|------|----------|
+| **BEI/IDX Official** | ❌ Commercial | Real-time, EOD, historical, corporate actions | Production, institutional use |
+| **IDX Data Download** | ✅ With registration | Market summary, trading data, foreign ownership | Official EOD data |
+
+### Commercial APIs
+| Source | Free Tier | Price | Data Coverage |
+|--------|-----------|-------|---------------|
+| **OHLC.dev** | ✅ 500/mo | $15/mo | 50+ endpoints, stocks, bonds, derivatives |
+| **Finnhub** | ✅ 60/min | Free tier | Global + IDX, includes news sentiment |
+| **GoAPI.io** | ✅ Trial | Affordable | Real-time prices, volume, indices |
+| **Sectors.app** | ❌ | $49/mo | Indonesia-focused, fundamentals |
+| **Alpha Vantage** | ✅ 25/day | Free tier | Global stocks, news, sentiment |
+
+### Open Source Projects (FREE)
+- **risan/indonesia-stock-exchange** - Pasardana scraper, deploy to Vercel
+- **noczero/idx-fundamental-analysis** - StockBit + YFinance, active development
+- **alifianmahardhika/idx-scraper** - Selenium-based, monthly updates
+
+### Kaggle Datasets (FREE)
+- Indonesia Stock Market 2020-2024 (with foreign flow data)
+- LQ45 Stocks Historical (Oct 2023-Oct 2024)
+- Individual bank stocks (BBCA, BBRI, BMRI)
+
+---
+
+## Sentiment Analysis Implementation
+
+### Current Approach: Yahoo Finance + FinBERT (FREE)
+
+**Architecture:**
+```
+Yahoo Finance (news) → FinBERT (NLP model) → Sentiment Score
+```
+
+**Advantages:**
+- ✅ Uses existing Yahoo Finance dependency
+- ✅ No API registration required
+- ✅ No rate limits or usage fees
+- ✅ Runs locally (privacy)
+- ✅ Financial domain-specific model (FinBERT)
+
+**Implementation:**
+```python
+# Get news from Yahoo Finance
+news = ticker.news  # Returns title, publisher, link, date
+
+# Analyze with FinBERT
+from transformers import pipeline
+finbert = pipeline("sentiment-analysis", model="ProsusAI/finBERT")
+sentiment = finbert(news_title)[0]
+# Returns: {'label': 'positive', 'score': 0.987}
+```
+
+**Output:**
+- Aggregate sentiment score (-1 to +1)
+- Positive/Negative/Neutral breakdown
+- Confidence scores per article
+- Recent news headlines with sentiment
+
+### Alternative: Third-Party APIs
+
+| Source | Free Tier | Registration | Pros | Cons |
+|--------|-----------|--------------|------|------|
+| **Finnhub** | 60/min | ✅ Required | Built-in sentiment | API key needed |
+| **marketaux** | 100/day | ✅ Required | Built-in sentiment | Limited requests |
+| **Sectors.app** | ❌ | ✅ Required | Indonesia-focused | Paid ($49/mo) |
+
+**Decision:** Use **Yahoo + FinBERT** for Phase 1 (no registration, free forever)
+
+---
+
 ## Implementation Timeline
 
 ### Q1 2026
@@ -197,12 +277,13 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) for details.
 - [x] Configuration file support
 
 **In Progress:**
-- [ ] Documentation reorganization
+- [x] Documentation reorganization
+- [ ] Sentiment analysis module (Yahoo + FinBERT)
 
 **Planned:**
 - See Phase 1-3 above
 
 ---
 
-*Last updated: 2026-02-14*  
+*Last updated: 2026-02-15*  
 *Maintained by: IDX Stock Analyzer Team*
