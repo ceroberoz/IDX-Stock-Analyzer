@@ -52,7 +52,8 @@ class NetworkConfig:
     max_retries: int = 3
     retry_delay: float = 1.0
     use_cache: bool = True
-    cache_ttl: int = 300
+    cache_ttl: int = 86400  # 1 day in seconds (was 300 = 5 minutes)
+    cache_location: Optional[str] = None  # None = use default (.cache/idx-analyzer)
 
 
 @dataclass

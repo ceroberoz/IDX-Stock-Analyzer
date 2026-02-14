@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Optional
 
 from .analyzer import IDXAnalyzer
+from .cache import configure_yfinance_cache, get_cache_info
 from .config import Config, create_default_config, load_config
 from .exceptions import (
     AnalysisError,
@@ -105,6 +106,18 @@ Examples:
         "--sentiment-vader",
         action="store_true",
         help="Use lightweight VADER sentiment (no model download, faster)",
+    )
+
+    parser.add_argument(
+        "--cache-info",
+        action="store_true",
+        help="Show HTTP cache information and exit",
+    )
+
+    parser.add_argument(
+        "--clear-cache",
+        action="store_true",
+        help="Clear HTTP cache and exit",
     )
 
     parser.add_argument("-v", "--version", action="version", version="%(prog)s 1.0.0")
@@ -354,6 +367,37 @@ def main(args: Optional[list] = None) -> int:
             print(f"Error creating config: {e}", file=sys.stderr)
             return 1
 
+    if parsed_args.cache_info:
+        try:
+            from .cache import get_cache_info
+
+            info = get_cache_info()
+            print("\n" + "=" * 64)
+            print(" HTTP CACHE INFORMATION ".center(64))
+            print("=" * 64 + "\n")
+            print(f"Cache Location:     {info['cache_location']}")
+            print(f"Cache Enabled:      {info['cache_enabled']}")
+            print(f"Cache TTL:          {info['cache_ttl_hours']:.1f} hours")
+            print(f"Cache Exists:       {info['cache_exists']}")
+            if "cached_responses" in info:
+                print(f"Cached Responses:   {info['cached_responses']}")
+            print("\n" + "=" * 64)
+            return 0
+        except Exception as e:
+            print(f"Error getting cache info: {e}", file=sys.stderr)
+            return 1
+
+    if parsed_args.clear_cache:
+        try:
+            from .cache import clear_cache
+
+            clear_cache()
+            print("Cache cleared successfully.")
+            return 0
+        except Exception as e:
+            print(f"Error clearing cache: {e}", file=sys.stderr)
+            return 1
+
     config: Optional[Config] = None
     if parsed_args.config:
         try:
@@ -363,6 +407,13 @@ def main(args: Optional[list] = None) -> int:
             return 1
 
     ticker = parsed_args.ticker
+
+    # Initialize HTTP cache for Yahoo Finance API
+    try:
+        configure_yfinance_cache()
+    except Exception as e:
+        # Non-fatal: continue without cache
+        print(f"Warning: Could not initialize cache: {e}", file=sys.stderr)
 
     if parsed_args.sentiment or parsed_args.sentiment_vader:
         try:
