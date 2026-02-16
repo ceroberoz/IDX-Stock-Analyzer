@@ -89,6 +89,30 @@ Examples:
     )
 
     parser.add_argument(
+        "--patterns",
+        action="store_true",
+        help="Show candlestick pattern markers on chart",
+    )
+
+    parser.add_argument(
+        "--macd",
+        action="store_true",
+        help="Show MACD indicator subplot on chart",
+    )
+
+    parser.add_argument(
+        "--sentiment-overlay",
+        action="store_true",
+        help="Overlay sentiment markers on chart (requires --sentiment)",
+    )
+
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Enable all chart features: patterns, MACD, sentiment, and sentiment overlay (requires --chart)",
+    )
+
+    parser.add_argument(
         "--chat",
         action="store_true",
         help="Generate compact output for Telegram/WhatsApp",
@@ -587,7 +611,17 @@ def main(args: Optional[list] = None) -> int:
         result = analyzer.analyze()
 
         # Generate chart (standard or executive style)
-        if parsed_args.chart or parsed_args.executive:
+        if parsed_args.chart or parsed_args.executive or parsed_args.all:
+            # Handle --all flag: enable all chart features
+            show_patterns = parsed_args.patterns or parsed_args.all
+            show_macd = parsed_args.macd or parsed_args.all
+            fetch_sentiment = (
+                parsed_args.sentiment
+                or parsed_args.sentiment_overlay
+                or parsed_args.all
+            )
+            show_sentiment_overlay = parsed_args.sentiment_overlay or parsed_args.all
+
             # Handle deprecated --executive flag
             chart_style = (
                 "executive" if parsed_args.executive else parsed_args.chart_style
@@ -598,6 +632,8 @@ def main(args: Optional[list] = None) -> int:
 
             if not parsed_args.quiet:
                 print(f"   Generating {style_name.lower()}...")
+                if parsed_args.all:
+                    print("      (patterns + MACD + sentiment overlay enabled)")
 
             from .chart import generate_chart
 
@@ -607,11 +643,35 @@ def main(args: Optional[list] = None) -> int:
                 filename = f"{analyzer.ticker.replace('.JK', '')}{suffix}.png"
                 output_path = get_output_path("charts", analyzer.ticker, filename)
 
+            sentiment_data = None
+            if show_sentiment_overlay and fetch_sentiment:
+                try:
+                    from .sentiment import SentimentAnalyzer
+
+                    if not parsed_args.quiet:
+                        print("      Fetching news sentiment for overlay...")
+                    sent_analyzer = SentimentAnalyzer(use_vader=True)
+                    sentiment_result = sent_analyzer.analyze(ticker, max_articles=10)
+                    sentiment_data = {
+                        "articles": [
+                            {
+                                "published": str(article.published),
+                                "sentiment": article.sentiment_label,
+                            }
+                            for article in sentiment_result.articles
+                        ]
+                    }
+                except Exception:
+                    pass
+
             chart_path = generate_chart(
                 analyzer=analyzer,
                 style=chart_style,
                 output_path=output_path,
                 show=False,
+                show_patterns=show_patterns,
+                show_macd=show_macd,
+                sentiment_data=sentiment_data,
             )
             if not parsed_args.quiet:
                 print(f"{style_name} saved: {chart_path}")

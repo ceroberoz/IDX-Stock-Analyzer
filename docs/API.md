@@ -170,9 +170,11 @@ generate_chart(
     analyzer: IDXAnalyzer,
     style: Literal["standard", "executive"] = "standard",
     output_path: Optional[str] = None,
-    show: bool = False
+    show: bool = False,
+    show_patterns: bool = False,
+    show_macd: bool = False,
+    sentiment_data: Optional[dict] = None
 ) -> str
-```
 
 Generate chart with specified style.
 
@@ -181,13 +183,22 @@ Generate chart with specified style.
 - `style` (str): Chart style - `"standard"` or `"executive"`
 - `output_path` (str, optional): Custom output filename
 - `show` (bool): If True, display chart instead of saving
+- `show_patterns` (bool): Show candlestick pattern markers (standard style only)
+- `show_macd` (bool): Show MACD indicator subplot (standard style only)
+- `sentiment_data` (dict, optional): Sentiment data for overlay (standard style only)
 
 **Returns:**
-- `str`: Absolute path to generated chart
+- `str`: Absolute path to generated chart file
 
 **Chart Styles:**
 - `"standard"` - Classic technical analysis chart with Catppuccin Mocha theme
 - `"executive"` - High-end dashboard with metrics bar, gauge, and Tailwind CSS design
+
+**Standard Chart Options:**
+When using `style='standard'`, you can enable additional features:
+- `show_patterns=True` - Displays candlestick pattern markers (🐂 Bullish, 🐻 Bearish, ⚖️ Neutral)
+- `show_macd=True` - Adds MACD indicator subplot below RSI
+- `sentiment_data` - Overlays sentiment markers on price chart
 
 **Example:**
 ```python
@@ -288,6 +299,14 @@ print(chat_summary)
 | `bb_upper` | `Optional[float]` | Bollinger Bands upper |
 | `bb_lower` | `Optional[float]` | Bollinger Bands lower |
 | `bb_position` | `Optional[str]` | Price position relative to BB |
+
+#### MACD
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `macd_line` | `Optional[float]` | MACD line value |
+| `macd_signal` | `Optional[float]` | MACD signal line value |
+| `macd_histogram` | `Optional[float]` | MACD histogram value |
 
 #### Volume Profile
 

@@ -63,6 +63,9 @@ class AnalysisResult:
         market_cap: Optional[float] = None,
         pe_ratio: Optional[float] = None,
         dividend_yield: Optional[float] = None,
+        macd_line: Optional[float] = None,
+        macd_signal: Optional[float] = None,
+        macd_histogram: Optional[float] = None,
     ):
         self.ticker = ticker
         self.current_price = current_price
@@ -90,6 +93,9 @@ class AnalysisResult:
         self.market_cap = market_cap
         self.pe_ratio = pe_ratio
         self.dividend_yield = dividend_yield
+        self.macd_line = macd_line
+        self.macd_signal = macd_signal
+        self.macd_histogram = macd_histogram
 
 
 def with_retry(max_retries: int = 3, delay: float = 1.0):
@@ -233,6 +239,27 @@ class IDXAnalyzer:
         upper = middle + (std * num_std)
         lower = middle - (std * num_std)
         return middle, upper, lower
+
+    def _calculate_macd(
+        self,
+        fast_period: int = 12,
+        slow_period: int = 26,
+        signal_period: int = 9,
+    ) -> Tuple[pd.Series, pd.Series, pd.Series]:
+        """Calculate MACD (Moving Average Convergence Divergence)"""
+        if self.hist is None or len(self.hist) < slow_period:
+            empty_series = pd.Series(
+                [0.0] * (len(self.hist) if self.hist is not None else 0)
+            )
+            return empty_series, empty_series, empty_series
+
+        exp1 = self.hist["Close"].ewm(span=fast_period, adjust=False).mean()
+        exp2 = self.hist["Close"].ewm(span=slow_period, adjust=False).mean()
+        macd_line = exp1 - exp2
+        signal_line = macd_line.ewm(span=signal_period, adjust=False).mean()
+        histogram = macd_line - signal_line
+
+        return macd_line, signal_line, histogram
 
     def _calculate_volume_profile(
         self, num_bins: Optional[int] = None
@@ -527,6 +554,14 @@ class IDXAnalyzer:
 
             vp_poc, vp_va_high, vp_va_low, vp_total = self._calculate_volume_profile()
 
+            # Calculate MACD
+            macd_line_series, macd_signal_series, macd_hist_series = (
+                self._calculate_macd()
+            )
+            macd_line = float(macd_line_series.iloc[-1])
+            macd_signal = float(macd_signal_series.iloc[-1])
+            macd_histogram = float(macd_hist_series.iloc[-1])
+
             supports = self._find_support_levels()
             resistances = self._find_resistance_levels()
             trend = self._determine_trend(current_rsi, sma_20, sma_50, sma_200)
@@ -565,6 +600,9 @@ class IDXAnalyzer:
                 market_cap=info.get("marketCap"),
                 pe_ratio=info.get("trailingPE"),
                 dividend_yield=info.get("dividendYield"),
+                macd_line=macd_line,
+                macd_signal=macd_signal,
+                macd_histogram=macd_histogram,
             )
 
         except AnalysisError:
@@ -959,4 +997,5 @@ class IDXAnalyzer:
         For new code, use chart.generate_chart() directly.
         """
         from .chart import generate_standard_chart
+
         return generate_standard_chart(self, output_path, show)

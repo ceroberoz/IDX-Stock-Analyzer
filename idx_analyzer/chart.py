@@ -70,9 +70,12 @@ class ChartTheme:
         "neutral": "◆",
         "up": "▲",
         "down": "▼",
-        "support": "🛡️",
-        "resistance": "🧱",
-        "sector": "◐",
+        "support": "S",
+        "resistance": "R",
+        "sector": "*",
+        "pattern_bullish": "[B]",
+        "pattern_bearish": "[S]",
+        "pattern_neutral": "[N]",
     }
 
 
@@ -150,6 +153,9 @@ def generate_standard_chart(
     analyzer: "IDXAnalyzer",
     output_path: Optional[str] = None,
     show: bool = False,
+    show_patterns: bool = False,
+    show_macd: bool = False,
+    sentiment_data: Optional[dict] = None,
 ) -> str:
     """Generate standard technical analysis chart with Catppuccin theme."""
     from .analyzer import ChartError
@@ -164,16 +170,21 @@ def generate_standard_chart(
     CTP = ChartTheme.CTP
     ICONS = ChartTheme.ICONS
 
+    # Adjust figure size and grid based on MACD option
+    fig_height = 12 if show_macd else 10
+    n_rows = 4 if show_macd else 3
+    height_ratios = [3, 1, 1, 1] if show_macd else [3, 1, 1]
+
     fig = plt.figure(
-        figsize=(14, 10),
+        figsize=(14, fig_height),
         facecolor=CTP["bg_facecolor"],
         layout="constrained",
     )
 
     gs = fig.add_gridspec(
-        3,
+        n_rows,
         2,
-        height_ratios=[3, 1, 1],
+        height_ratios=height_ratios,
         width_ratios=[4, 1],
         hspace=0.05,
         wspace=0.05,
@@ -280,6 +291,41 @@ def generate_standard_chart(
             fontsize=9,
         )
 
+    # Pattern markers
+    if show_patterns:
+        try:
+            from .candlestick_patterns import detect_all_patterns, PatternType
+
+            patterns = detect_all_patterns(hist)
+            for pattern in patterns:
+                if pattern.index < len(hist):
+                    date = hist.index[pattern.index]
+                    price = float(hist["High"].iloc[pattern.index])
+                    icon = (
+                        ICONS["pattern_bullish"]
+                        if pattern.type == PatternType.BULLISH
+                        else ICONS["pattern_bearish"]
+                        if pattern.type == PatternType.BEARISH
+                        else ICONS["pattern_neutral"]
+                    )
+                    color = (
+                        CTP["peer_up"]
+                        if pattern.type == PatternType.BULLISH
+                        else CTP["peer_down"]
+                        if pattern.type == PatternType.BEARISH
+                        else CTP["text"]
+                    )
+                    ax1.annotate(
+                        icon,
+                        xy=(date, price),
+                        fontsize=12,
+                        ha="center",
+                        va="bottom",
+                        color=color,
+                    )
+        except Exception:
+            pass
+
     ax1.tick_params(colors=CTP["tick_color"])
     ax1.grid(True, alpha=0.2, color=CTP["grid_color"])
     for spine in ax1.spines.values():
@@ -336,12 +382,21 @@ def generate_standard_chart(
 
     # === VOLUME PROFILE ===
     if len(hist) >= 20:
-        ax_vp = fig.add_subplot(gs_right[1, 0], sharey=ax1)
+        ax_vp = fig.add_subplot(gs_right[1, 0])
         ax_vp.set_facecolor(CTP["axes_facecolor"])
+
+        # Add title
+        ax_vp.set_title(
+            "Volume Profile",
+            fontsize=10,
+            fontweight="bold",
+            color=CTP["section_header"],
+            pad=5,
+        )
 
         price_low = float(hist["Low"].min())
         price_high = float(hist["High"].max())
-        num_bins = 50
+        num_bins = 40
         bins = np.linspace(price_low, price_high, num_bins + 1)
         bin_centers = (bins[:-1] + bins[1:]) / 2
         volume_by_bin = np.zeros(num_bins)
@@ -368,15 +423,54 @@ def generate_standard_chart(
                     volume_by_bin[j] += vol_per
 
         max_vol = volume_by_bin.max()
+
+        # Create gradient effect
+        colors = []
+        for vol in volume_by_bin:
+            if vol >= max_vol * 0.7:
+                colors.append(CTP["price_line"])
+            elif vol >= max_vol * 0.4:
+                colors.append(CTP["sma_50"])
+            else:
+                colors.append(CTP["grid_color"])
+
         ax_vp.barh(
             bin_centers,
             volume_by_bin,
-            height=(price_high - price_low) / num_bins * 0.8,
-            color=CTP["price_line"],
-            alpha=0.6,
+            height=(price_high - price_low) / num_bins * 0.9,
+            color=colors,
+            alpha=0.7,
         )
-        ax_vp.set_xlim(0, max_vol * 1.1)
-        ax_vp.axis("off")
+
+        # Add POC line
+        poc_idx = np.argmax(volume_by_bin)
+        poc_price = bin_centers[poc_idx]
+        ax_vp.axhline(
+            y=poc_price,
+            color=CTP["current_price_line"],
+            linestyle="--",
+            linewidth=1.5,
+            alpha=0.8,
+        )
+        ax_vp.text(
+            max_vol * 1.02,
+            poc_price,
+            " POC",
+            color=CTP["current_price_line"],
+            fontsize=8,
+            va="center",
+        )
+
+        ax_vp.set_xlim(0, max_vol * 1.2)
+        ax_vp.tick_params(colors=CTP["tick_color"], labelsize=8)
+        ax_vp.set_xlabel("Volume", color=CTP["text"], fontsize=8)
+        ax_vp.grid(True, alpha=0.2, color=CTP["grid_color"], axis="x")
+
+        # Match y-axis limits with price chart
+        ax_vp.set_ylim(price_low * 0.99, price_high * 1.01)
+
+        for spine in ax_vp.spines.values():
+            spine.set_color(CTP["surface0"])
 
     # === VOLUME CHART ===
     ax2 = fig.add_subplot(gs[1, 0], sharex=ax1)
@@ -396,7 +490,8 @@ def generate_standard_chart(
         spine.set_color(CTP["surface0"])
 
     # === RSI CHART ===
-    ax3 = fig.add_subplot(gs[2, 0], sharex=ax1)
+    rsi_row = 2 if show_macd else 2
+    ax3 = fig.add_subplot(gs[rsi_row, 0], sharex=ax1)
     ax3.set_facecolor(CTP["axes_facecolor"])
 
     delta = hist["Close"].diff()
@@ -415,6 +510,140 @@ def generate_standard_chart(
     ax3.grid(True, alpha=0.2, color=CTP["grid_color"], axis="y")
     for spine in ax3.spines.values():
         spine.set_color(CTP["surface0"])
+
+    # === MACD CHART (Optional) ===
+    if show_macd:
+        ax_macd = fig.add_subplot(gs[3, 0], sharex=ax1)
+        ax_macd.set_facecolor(CTP["axes_facecolor"])
+
+        exp1 = hist["Close"].ewm(span=12, adjust=False).mean()
+        exp2 = hist["Close"].ewm(span=26, adjust=False).mean()
+        macd_line = exp1 - exp2
+        signal_line = macd_line.ewm(span=9, adjust=False).mean()
+        histogram = macd_line - signal_line
+
+        ax_macd.plot(
+            hist.index, macd_line, color=CTP["price_line"], linewidth=1.5, label="MACD"
+        )
+        ax_macd.plot(
+            hist.index,
+            signal_line,
+            color=CTP["rsi_line"],
+            linewidth=1.5,
+            label="Signal",
+        )
+        ax_macd.bar(
+            hist.index,
+            histogram,
+            color=[CTP["peer_up"] if h >= 0 else CTP["peer_down"] for h in histogram],
+            alpha=0.7,
+            width=0.8,
+        )
+        ax_macd.axhline(y=0, color=CTP["grid_color"], linestyle="-", alpha=0.5)
+        ax_macd.set_ylabel("MACD", color=CTP["text"])
+        ax_macd.tick_params(colors=CTP["tick_color"])
+        ax_macd.grid(True, alpha=0.2, color=CTP["grid_color"], axis="y")
+        ax_macd.legend(
+            loc="upper left",
+            fontsize=8,
+            facecolor=CTP["axes_facecolor"],
+            edgecolor=CTP["surface0"],
+            labelcolor=CTP["text"],
+        )
+        for spine in ax_macd.spines.values():
+            spine.set_color(CTP["surface0"])
+
+    # Sentiment overlay on price chart
+    if sentiment_data and "articles" in sentiment_data and sentiment_data["articles"]:
+        try:
+            matched_articles = 0
+            for article in sentiment_data["articles"][:10]:
+                if "published" in article and "sentiment" in article:
+                    date_str = article["published"]
+                    sentiment = article["sentiment"]
+                    for i, idx_date in enumerate(hist.index):
+                        if str(idx_date)[:10] == date_str[:10]:
+                            price_at_date = float(hist["Close"].iloc[i])
+                            color = (
+                                CTP["peer_up"]
+                                if sentiment == "positive"
+                                else CTP["peer_down"]
+                                if sentiment == "negative"
+                                else CTP["text"]
+                            )
+                            marker = (
+                                "^"
+                                if sentiment == "positive"
+                                else "v"
+                                if sentiment == "negative"
+                                else "o"
+                            )
+                            ax1.scatter(
+                                idx_date,
+                                price_at_date,
+                                marker=marker,
+                                s=100,
+                                color=color,
+                                alpha=0.8,
+                                zorder=5,
+                                edgecolors=CTP["bg_facecolor"],
+                                linewidths=1,
+                            )
+                            matched_articles += 1
+                            break
+
+            # Add legend for sentiment markers
+            if matched_articles > 0:
+                from matplotlib.lines import Line2D
+
+                legend_elements = [
+                    Line2D(
+                        [0],
+                        [0],
+                        marker="^",
+                        color="w",
+                        markerfacecolor=CTP["peer_up"],
+                        markersize=8,
+                        label="Positive News",
+                    ),
+                    Line2D(
+                        [0],
+                        [0],
+                        marker="v",
+                        color="w",
+                        markerfacecolor=CTP["peer_down"],
+                        markersize=8,
+                        label="Negative News",
+                    ),
+                ]
+                ax1.legend(
+                    handles=legend_elements,
+                    loc="lower left",
+                    fontsize=8,
+                    facecolor=CTP["axes_facecolor"],
+                    edgecolor=CTP["surface0"],
+                    labelcolor=CTP["text"],
+                )
+        except Exception:
+            pass
+    else:
+        # Show message when no sentiment data available
+        ax1.text(
+            0.02,
+            0.02,
+            "[NEWS] No sentiment data\n       Use --sentiment",
+            transform=ax1.transAxes,
+            fontsize=8,
+            color=CTP["text"],
+            alpha=0.6,
+            verticalalignment="bottom",
+            bbox=dict(
+                boxstyle="round,pad=0.3",
+                facecolor=CTP["axes_facecolor"],
+                edgecolor=CTP["surface0"],
+                alpha=0.8,
+            ),
+        )
 
     # Save
     if output_path is None:
@@ -1071,6 +1300,9 @@ def generate_chart(
     style: Literal["standard", "executive"] = "standard",
     output_path: Optional[str] = None,
     show: bool = False,
+    show_patterns: bool = False,
+    show_macd: bool = False,
+    sentiment_data: Optional[dict] = None,
 ) -> str:
     """
     Generate chart with specified style.
@@ -1080,6 +1312,9 @@ def generate_chart(
         style: Chart style - 'standard' or 'executive'
         output_path: Output file path (optional)
         show: Whether to display the chart
+        show_patterns: Show candlestick pattern markers (standard style only)
+        show_macd: Show MACD indicator subplot (standard style only)
+        sentiment_data: Sentiment data for overlay (standard style only)
 
     Returns:
         Path to generated chart file
@@ -1087,4 +1322,6 @@ def generate_chart(
     if style == "executive":
         return generate_executive_dashboard(analyzer, output_path, show)
     else:
-        return generate_standard_chart(analyzer, output_path, show)
+        return generate_standard_chart(
+            analyzer, output_path, show, show_patterns, show_macd, sentiment_data
+        )

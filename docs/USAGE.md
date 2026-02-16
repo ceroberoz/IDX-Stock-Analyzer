@@ -118,6 +118,10 @@ uv run idx-analyzer <TICKER> [OPTIONS]
 | `--chart` | `-c` | Generate technical chart | `--chart` |
 | `--chart-style` | | Chart style: `standard` or `executive` | `--chart-style executive` |
 | `--chart-output` | | Custom chart filename | `--chart-output bbc.png` |
+| `--patterns` | | Show candlestick pattern markers on chart | `--chart --patterns` |
+| `--macd` | | Show MACD indicator subplot on chart | `--chart --macd` |
+| `--sentiment-overlay` | | Overlay sentiment markers on chart (requires `--sentiment`) | `--chart --sentiment --sentiment-overlay` |
+| `--all` | | Enable all chart features (patterns + MACD + sentiment overlay) | `--chart --all` |
 | `--chat` | | Generate compact chat report | `--chat` |
 | `--config` | | Custom configuration file | `--config myconfig.toml` |
 | `--init-config` | | Create default config file | `--init-config` |
@@ -150,6 +154,18 @@ uv run idx-analyzer BBRI --period 1y --chart
 
 # Generate executive dashboard (high-end layout with metrics)
 uv run idx-analyzer BBRI --chart --chart-style executive
+
+# Generate chart with candlestick pattern markers
+uv run idx-analyzer BBRI --chart --patterns
+
+# Generate chart with MACD indicator subplot
+uv run idx-analyzer BBRI --chart --macd
+
+# Generate chart with sentiment overlay (requires news sentiment)
+uv run idx-analyzer BBRI --chart --sentiment --sentiment-overlay
+
+# Generate chart with ALL features enabled (patterns + MACD + sentiment overlay)
+uv run idx-analyzer BBRI --chart --all
 
 # Export to JSON
 uv run idx-analyzer TLKM --export json --output tlkm_analysis.json
@@ -198,14 +214,29 @@ Classic technical analysis chart with:
 - Bollinger Bands with shaded zones
 - Volume timeline with color-coded bars
 - RSI momentum indicator
+- MACD indicator (with `--macd` flag)
 - Volume Profile (horizontal histogram)
 - Sector peer comparison
+- Candlestick pattern markers (with `--patterns` flag)
+- Sentiment overlay (with `--sentiment-overlay` flag)
 - Market insight narrative box
 
 ```bash
 uv run idx-analyzer BBCA --chart
 # or explicitly
 uv run idx-analyzer BBCA --chart --chart-style standard
+
+# With pattern detection
+uv run idx-analyzer BBCA --chart --patterns
+
+# With MACD indicator
+uv run idx-analyzer BBCA --chart --macd
+
+# With all features (shorthand)
+uv run idx-analyzer BBCA --chart --all
+
+# With all features (explicit)
+uv run idx-analyzer BBCA --chart --patterns --macd --sentiment --sentiment-overlay
 ```
 
 ### Executive Dashboard
