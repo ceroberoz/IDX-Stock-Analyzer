@@ -116,6 +116,7 @@ uv run idx-analyzer <TICKER> [OPTIONS]
 | `--export` | `-e` | Export format (csv/json) | `--export json` |
 | `--output` | `-o` | Custom output filename | `--output my_analysis.json` |
 | `--chart` | `-c` | Generate technical chart | `--chart` |
+| `--chart-style` | | Chart style: `standard` or `executive` | `--chart-style executive` |
 | `--chart-output` | | Custom chart filename | `--chart-output bbc.png` |
 | `--chat` | | Generate compact chat report | `--chat` |
 | `--config` | | Custom configuration file | `--config myconfig.toml` |
@@ -147,6 +148,9 @@ uv run idx-analyzer BBCA
 # Analyze with 1 year data and generate chart
 uv run idx-analyzer BBRI --period 1y --chart
 
+# Generate executive dashboard (high-end layout with metrics)
+uv run idx-analyzer BBRI --chart --chart-style executive
+
 # Export to JSON
 uv run idx-analyzer TLKM --export json --output tlkm_analysis.json
 
@@ -171,7 +175,8 @@ Charts and exports are automatically organized by ticker and date:
 charts/
 └── BBCA/
     └── 2026-02-14/
-        └── BBCA_chart.png
+        ├── BBCA_chart.png           # Standard chart
+        └── BBCA_executive.png       # Executive dashboard (if using --chart-style executive)
 
 exports/
 └── BBCA/
@@ -180,6 +185,44 @@ exports/
 ```
 
 This keeps your workspace clean when analyzing multiple stocks over time.
+
+---
+
+## Chart Styles
+
+IDX Analyzer supports two chart styles:
+
+### Standard Chart (Default)
+Classic technical analysis chart with:
+- Price action with SMA 20/50/200 lines
+- Bollinger Bands with shaded zones
+- Volume timeline with color-coded bars
+- RSI momentum indicator
+- Volume Profile (horizontal histogram)
+- Sector peer comparison
+- Market insight narrative box
+
+```bash
+uv run idx-analyzer BBCA --chart
+# or explicitly
+uv run idx-analyzer BBCA --chart --chart-style standard
+```
+
+### Executive Dashboard
+High-end professional dashboard featuring:
+- Clean metrics bar (Current Price, Risk/Reward, Safety Net, Wall)
+- Action badge (BUY/SELL/HOLD with STRONG variants)
+- Price/Volume/RSI in 60:20:20 ratio layout
+- Volume Accumulation/Distribution gauge
+- Sector comparison table
+- Key insights panel
+- Tailwind CSS-inspired design principles
+
+```bash
+uv run idx-analyzer BBCA --chart --chart-style executive
+```
+
+**Note:** The `--executive` flag is deprecated but still works for backward compatibility. Use `--chart --chart-style executive` instead.
 
 ---
 

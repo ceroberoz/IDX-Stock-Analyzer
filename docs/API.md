@@ -35,6 +35,10 @@ print(f"RSI: {result.rsi}")
 
 # Generate chart
 chart_path = analyzer.generate_chart(output_path="my_chart.png")
+
+# Generate executive dashboard style
+from idx_analyzer.chart import generate_chart
+chart_path = generate_chart(analyzer, style='executive', output_path="executive.png")
 ```
 
 ---
@@ -127,7 +131,7 @@ print(f"RSI: {result.rsi}")
 generate_chart(output_path: Optional[str] = None, show: bool = False) -> str
 ```
 
-Generate technical analysis chart.
+Generate technical analysis chart (standard style).
 
 **Parameters:**
 - `output_path` (str, optional): Custom output filename
@@ -149,6 +153,55 @@ chart_path = analyzer.generate_chart(output_path="my_analysis.png")
 
 # Display instead of save
 analyzer.generate_chart(show=True)
+```
+
+---
+
+## Chart Module
+
+The `chart` module provides a unified interface for generating charts with different styles.
+
+### generate_chart()
+
+```python
+from idx_analyzer.chart import generate_chart
+
+generate_chart(
+    analyzer: IDXAnalyzer,
+    style: Literal["standard", "executive"] = "standard",
+    output_path: Optional[str] = None,
+    show: bool = False
+) -> str
+```
+
+Generate chart with specified style.
+
+**Parameters:**
+- `analyzer` (IDXAnalyzer): Analyzer instance with fetched data
+- `style` (str): Chart style - `"standard"` or `"executive"`
+- `output_path` (str, optional): Custom output filename
+- `show` (bool): If True, display chart instead of saving
+
+**Returns:**
+- `str`: Absolute path to generated chart
+
+**Chart Styles:**
+- `"standard"` - Classic technical analysis chart with Catppuccin Mocha theme
+- `"executive"` - High-end dashboard with metrics bar, gauge, and Tailwind CSS design
+
+**Example:**
+```python
+from idx_analyzer.analyzer import IDXAnalyzer
+from idx_analyzer.chart import generate_chart
+
+analyzer = IDXAnalyzer("BBCA")
+analyzer.fetch_data(period="6mo")
+
+# Standard chart
+chart_path = generate_chart(analyzer, style='standard')
+
+# Executive dashboard
+exec_path = generate_chart(analyzer, style='executive', output_path="exec.png")
 ```
 
 ---

@@ -30,6 +30,7 @@ IDX-Stock-Analyzer/
 │   ├── __init__.py
 │   ├── analyzer.py         # Core analysis engine
 │   ├── cache.py            # HTTP cache management
+│   ├── chart.py            # Unified chart generation (standard & executive)
 │   ├── cli.py              # Command-line interface
 │   ├── config.py           # Configuration management
 │   ├── exceptions.py       # Custom exceptions
@@ -70,6 +71,9 @@ uv run idx-analyzer BBCA
 
 # Generate a chart
 uv run idx-analyzer BBCA --chart
+
+# Executive dashboard style (high-end layout)
+uv run idx-analyzer BBCA --chart --chart-style executive
 
 # 1 year of data for SMA 200
 uv run idx-analyzer BBCA --period 1y --chart

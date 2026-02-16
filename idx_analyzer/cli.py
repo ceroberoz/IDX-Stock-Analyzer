@@ -77,6 +77,13 @@ Examples:
     )
 
     parser.add_argument(
+        "--chart-style",
+        choices=["standard", "executive"],
+        default="standard",
+        help="Chart style: 'standard' (classic) or 'executive' (high-end dashboard)",
+    )
+
+    parser.add_argument(
         "--chart-output",
         help="Custom chart output filename (default: charts/TICKER/DATE/TICKER_chart.png)",
     )
@@ -150,6 +157,32 @@ Examples:
         "--clear-cache",
         action="store_true",
         help="Clear HTTP cache and exit",
+    )
+
+    parser.add_argument(
+        "--peers",
+        action="store_true",
+        help="Show sector peers comparison",
+    )
+
+    parser.add_argument(
+        "--peers-count",
+        type=int,
+        default=4,
+        help="Number of peers to show (default: 4)",
+    )
+
+    parser.add_argument(
+        "--peers-compact",
+        action="store_true",
+        help="Show peers in compact format: (UP 1000 TICKER)",
+    )
+
+    # --executive is deprecated, use --chart-style executive instead
+    parser.add_argument(
+        "--executive",
+        action="store_true",
+        help=argparse.SUPPRESS,  # Hidden from help
     )
 
     parser.add_argument("-v", "--version", action="version", version="%(prog)s 1.0.0")
@@ -553,18 +586,43 @@ def main(args: Optional[list] = None) -> int:
         analyzer.fetch_data(period=period)
         result = analyzer.analyze()
 
-        if parsed_args.chart:
+        # Generate chart (standard or executive style)
+        if parsed_args.chart or parsed_args.executive:
+            # Handle deprecated --executive flag
+            chart_style = (
+                "executive" if parsed_args.executive else parsed_args.chart_style
+            )
+            style_name = (
+                "Executive Dashboard" if chart_style == "executive" else "Chart"
+            )
+
             if not parsed_args.quiet:
-                print(f"   Generating chart...")
+                print(f"   Generating {style_name.lower()}...")
+
+            from .chart import generate_chart
 
             output_path = parsed_args.chart_output
             if not output_path:
-                filename = f"{analyzer.ticker.replace('.JK', '')}_chart.png"
+                suffix = "_executive" if chart_style == "executive" else "_chart"
+                filename = f"{analyzer.ticker.replace('.JK', '')}{suffix}.png"
                 output_path = get_output_path("charts", analyzer.ticker, filename)
 
-            chart_path = analyzer.generate_chart(output_path=output_path, show=False)
+            chart_path = generate_chart(
+                analyzer=analyzer,
+                style=chart_style,
+                output_path=output_path,
+                show=False,
+            )
             if not parsed_args.quiet:
-                print(f"Chart saved: {chart_path}")
+                print(f"{style_name} saved: {chart_path}")
+
+            # If only chart was requested (no other output), return early
+            if (
+                not parsed_args.export
+                and not parsed_args.peers
+                and not parsed_args.chat
+            ):
+                return 0
 
         if parsed_args.export:
             if parsed_args.output:
@@ -581,6 +639,24 @@ def main(args: Optional[list] = None) -> int:
         if parsed_args.chat:
             print(analyzer.generate_chat_report(result))
             return 0
+
+        # Show sector peers if requested
+        if parsed_args.peers:
+            if parsed_args.peers_compact:
+                from .sector_comparison import format_peer_ticker_style
+
+                peer_line = format_peer_ticker_style(ticker)
+                if peer_line:
+                    print(f"\n📊 Sector: {peer_line}")
+            else:
+                from .sector_comparison import format_sector_comparison
+
+                print(
+                    "\n"
+                    + format_sector_comparison(
+                        ticker, max_peers=parsed_args.peers_count
+                    )
+                )
 
         if not parsed_args.quiet:
             try:
