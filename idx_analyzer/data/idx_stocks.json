@@ -1,0 +1,270 @@
+{
+  "_meta": {
+    "description": "IDX Stock Universe - Indonesia Stock Exchange Listed Companies",
+    "version": "2.0",
+    "last_updated": "2026-02-16",
+    "source": "https://www.idx.co.id/id/data-pasar/data-saham/daftar-saham/",
+    "notes": [
+      "Stock data organized by indices, boards, and sectors for easy management",
+      "Board classifications follow IDX official categorization",
+      "LQ45 serves as default screener universe for most liquid stocks",
+      "Tickers are stored without .JK suffix - add when calling Yahoo Finance"
+    ]
+  },
+  "indices": {
+    "LQ45": {
+      "name": "LQ45 Index",
+      "description": "45 most liquid stocks on IDX",
+      "tickers": [
+        "ADRO", "AMMN", "AMRT", "ANTM", "ARTO", "ASII", "BBCA", "BBNI", "BBRI", "BBTN",
+        "BFIN", "BMRI", "BRIS", "BRMS", "BRPT", "BUKA", "CPIN", "EMTK", "ESSA", "EXCL",
+        "GGRM", "GOTO", "HEAL", "HMSP", "HRUM", "ICBP", "INCO", "INDF", "INKP", "INTP",
+        "ITMG", "KLBF", "MAPI", "MBMA", "MDIY", "MEDC", "MIKA", "MNCN", "MYOR", "PGAS",
+        "PTBA", "SIDO", "SMGR", "SRIL", "TLKM"
+      ]
+    },
+    "IDX30": {
+      "name": "IDX30 Index",
+      "description": "30 largest and most liquid stocks",
+      "tickers": [
+        "ADRO", "AMRT", "ANTM", "ASII", "BBCA", "BBNI", "BBRI", "BBTN", "BMRI", "BRIS",
+        "BRPT", "CPIN", "EMTK", "ESSA", "EXCL", "GGRM", "HMSP", "ICBP", "INCO", "INDF",
+        "INKP", "INTP", "ITMG", "KLBF", "MAPI", "MEDC", "MYOR", "PGAS", "SMGR", "TLKM"
+      ]
+    },
+    "JII": {
+      "name": "Jakarta Islamic Index",
+      "description": "Shariah-compliant stocks",
+      "tickers": [
+        "ADRO", "AMMN", "AMRT", "ANTM", "ARTO", "ASII", "BBCA", "BBNI", "BBRI", "BBTN",
+        "BMRI", "BRIS", "BRMS", "BRPT", "BUKA", "CPIN", "EMTK", "ESSA", "EXCL", "GOTO",
+        "HEAL", "ICBP", "INCO", "INDF", "INKP", "INTP", "ITMG", "KLBF", "MAPI", "MBMA",
+        "MDIY", "MEDC", "MIKA", "MNCN", "MYOR", "PGAS", "PTBA", "SIDO", "SMGR", "SRIL",
+        "TLKM", "UNVR"
+      ]
+    }
+  },
+
+  "boards": {
+    "utama": {
+      "name": "Papan Utama (Main Board)",
+      "description": "Most liquid and established companies on IDX",
+      "category": "primary",
+      "tickers": [
+        "ADRO", "AMMN", "AMRT", "ANTM", "ARTO", "ASII", "BBCA", "BBNI", "BBRI", "BBTN",
+        "BFIN", "BMRI", "BRIS", "BRMS", "BRPT", "BUKA", "CPIN", "EMTK", "ESSA", "EXCL",
+        "GGRM", "GOTO", "HEAL", "HMSP", "HRUM", "ICBP", "INCO", "INDF", "INKP", "INTP",
+        "ITMG", "KLBF", "MAPI", "MBMA", "MDIY", "MEDC", "MIKA", "MNCN", "MYOR", "PGAS",
+        "PTBA", "SIDO", "SMGR", "SRIL", "TLKM", "UNVR", "BJTM", "BJBR", "BNGA", "BBKP",
+        "BABP", "BACA", "BINA", "NISP", "PNBN", "AGRO", "MAYA", "MEGA", "BBSI", "BCIC",
+        "ISAT", "FREN", "TBIG", "TOWR", "GOLD", "MCAS", "KAEF", "SIMP", "AALI", "LSIP",
+        "SSMS", "KINO", "MLBI", "ROTI", "CAMP", "KEJU", "UCID", "CLEO", "HERO", "TINS",
+        "DOID", "KKGI", "MBAP", "BYAN", "BUMI", "BSSR", "TOBA", "GEMS", "ELSA", "ENRG",
+        "TPIA", "AKRA", "BREN", "PGEO", "TUGU", "CTRA", "SMRA", "PWON", "BSDE", "APLN",
+        "LPKR", "TOTL", "DILD", "JRPT", "ASRI", "KIJA", "DMAS", "BKDP", "BKSL", "BUVA",
+        "JPFA", "MAIN", "CMRY", "GOOD", "AVIA", "MIBA", "PSDN", "JSMR", "PTPP", "WIKA",
+        "WSKT", "ADHI", "JKON", "CMNP", "KREN", "INDO", "DIVA", "ENVY", "DMMX", "NFCX",
+        "DNET", "EDGE", "INET", "SCPI", "TSPC", "DYDX", "MEDS", "OMED", "GIAA", "PRDA",
+        "SILO", "INAF", "BMHS", "ADMF", "WOMF", "LPPS", "BBLD", "MPPA", "ERAA", "AUTO",
+        "CFIN", "BCAP", "PNLF", "PNIN", "ASBI", "IMAS", "ASSA", "GJTL", "GTBO", "HEXA",
+        "CARS", "ACES", "RALS", "LPPF", "MIDI", "SMBR", "SMCB", "BWPT", "DSNG", "TBLA",
+        "SGRO", "NCKL", "NICL", "BIRD", "TMAS", "SMDR", "SDMU", "IPCM", "PSSI", "SSIA",
+        "PPRE", "RGAS"
+      ]
+    },
+    "pengembangan": {
+      "name": "Papan Pengembangan (Development Board)",
+      "description": "Growing companies with good potential",
+      "category": "secondary",
+      "tickers": [
+        "AVIA", "BAPI", "BBSS", "BEEF", "BOGA", "CASS", "CEKA", "CMRY", "DAYA", "DEWI",
+        "DGIK", "FIMP", "FMII", "FOOD", "FPNI", "GRPM", "GZCO", "HOKI", "HOME", "HOPE",
+        "HRME", "IBFN", "IIKP", "IKAI", "INDR", "IPCC", "IRON", "JAST", "JAYA", "JGLE",
+        "KAYU", "KEEN", "KJEN", "KOBX", "KOIN", "KONI", "LAND", "LCKM", "LMSH", "LOPI",
+        "LPLI", "LRNA", "MABA", "MAGP", "MAIN", "MAMI", "MARK", "MDKA", "MDRN", "MERA",
+        "MERK", "META", "MINA", "MIRA", "MKPI", "MLIA", "MMLP", "MORA", "MPOW", "MSKY",
+        "MTDL", "MTFN", "MTLA", "MTPS", "MYOH", "NANO", "NICE", "NIKL", "NPGF", "OASA",
+        "OBMD", "OCAP", "OILS", "OKAS", "OLIV", "OMRE", "PANI", "PANS", "PBID", "PDES",
+        "PEGE", "PGJO", "PGLI", "PICO", "POLI", "POLL", "POPO", "PORT", "POSA", "POWR",
+        "PPRO", "PSAB", "PSGO", "PSKT", "PTIS", "PTPW", "PUDP", "PURA", "PYFA", "RAJA",
+        "RANC", "RBMS", "RDTX", "REAL", "REMI", "RICY", "RIGS", "RODA", "RUIS", "RUNS",
+        "SAME", "SAMF", "SATU", "SCBD", "SCCO", "SCMA", "SFAN", "SGER", "SHID", "SHIP",
+        "SIMA", "SINI", "SKBM", "SKLT", "SKYB", "SLIS", "SMAR", "SMMT", "SOCI", "SONA",
+        "SPCM", "SPMA", "SQMI", "SRAJ", "SSTM", "STAR", "STTP", "SUGI", "SULI", "SURE",
+        "SWAT", "TAMU", "TARA", "TAXI", "TBMS", "TCID", "TEBE", "TECH", "TFAS", "TFCO",
+        "TGKA", "TGRA", "TGUK", "TIFA", "TIGR", "TIRA", "TKIM", "TMPO", "TOPS", "TOYS",
+        "TRIL", "TRIN", "TRIS", "TRJA", "TRST", "TRUE", "TRUK", "TURI", "UANG", "UFOE",
+        "ULTJ", "UNIC", "UNIQ", "UNTR", "URBN", "VICI", "VICO", "VINS", "VIVA", "VOKS",
+        "VRNA", "WAPO", "WEGE", "WIFI", "WIIM", "WINS", "WINR", "WIRG", "WMUU", "WOOD",
+        "WOWS", "WSBP", "WTON", "YELO", "YPAS", "YULE", "ZBRA", "ZINC", "ZYRX"
+      ]
+    },
+    "pemantauan_khusus": {
+      "name": "Papan Pemantauan Khusus (Special Monitoring)",
+      "description": "Companies under special monitoring by IDX",
+      "category": "monitoring",
+      "tickers": [
+        "POLA", "GOLL", "TAMU", "KONI", "ZONE", "SOCI", "TRIL", "RAJA", "DYAN", "KING",
+        "BIKA", "BIQI", "WAPO", "VICO", "BOGA", "NINE", "PURI", "TOPS", "DEWI", "KOIN",
+        "LCKM", "MAMI", "PANS", "TRIO", "JGLE", "JAYA", "HOKI", "RIGS", "MARK"
+      ]
+    },
+    "akselerasi": {
+      "name": "Papan Akselerasi (Acceleration Board)",
+      "description": "Newly listed companies in acceleration program",
+      "category": "acceleration",
+      "tickers": [
+        "JATI", "MITI", "PTPS", "HILL", "ASLI", "AYAM", "BEBS", "ELIT", "GLVA", "GULA",
+        "RELI", "LUCY", "BAIK", "CINT"
+      ]
+    },
+    "ekonomi_baru": {
+      "name": "Papan Ekonomi Baru (New Economy)",
+      "description": "Technology and new economy companies",
+      "category": "new_economy",
+      "tickers": [
+        "DOOH", "MLPT", "NUSA", "BMSR", "DIGI", "NCPI", "KIOS", "OASA"
+      ]
+    }
+  },
+
+  "sectors": {
+    "banking": {
+      "name": "Banking",
+      "description": "Commercial and Islamic banks",
+      "tickers": [
+        "BBCA", "BBRI", "BMRI", "BBNI", "BRIS", "BJTM", "BBTN", "BJBR", "BNGA", "BBKP",
+        "BABP", "BACA", "BINA", "NISP", "PNBN", "AGRO", "MAYA", "MEGA", "BBSI", "BCIC"
+      ]
+    },
+    "telecommunication": {
+      "name": "Telecommunication",
+      "description": "Telco operators and tower companies",
+      "tickers": ["TLKM", "ISAT", "EXCL", "FREN", "TBIG", "TOWR", "GOLD", "MCAS"]
+    },
+    "consumer_goods": {
+      "name": "Consumer Goods",
+      "description": "FMCG, food, and beverages",
+      "tickers": [
+        "UNVR", "ICBP", "MYOR", "GGRM", "KAEF", "INDF", "SIMP", "AALI", "LSIP", "SSMS",
+        "KINO", "MLBI", "ROTI", "CAMP", "KEJU", "UCID", "CLEO", "AMRT", "HERO"
+      ]
+    },
+    "mining": {
+      "name": "Mining",
+      "description": "Coal, nickel, and mineral mining",
+      "tickers": [
+        "ADRO", "ITMG", "PTBA", "ANTM", "INCO", "TINS", "HRUM", "DOID", "KKGI", "MBAP",
+        "BYAN", "BUMI", "BRMS", "BSSR", "TOBA", "GEMS", "MBMA", "PSAB", "NCKL", "NICL"
+      ]
+    },
+    "energy": {
+      "name": "Energy",
+      "description": "Oil, gas, and geothermal",
+      "tickers": [
+        "MEDC", "ELSA", "ENRG", "ESSA", "TPIA", "AKRA", "BUMI", "DOID", "TOBA", "BREN",
+        "PGEO", "TUGU"
+      ]
+    },
+    "property": {
+      "name": "Property",
+      "description": "Real estate developers",
+      "tickers": [
+        "CTRA", "SMRA", "PWON", "BSDE", "APLN", "LPKR", "MEGA", "TOTL", "DILD", "JRPT",
+        "ASRI", "KIJA", "DMAS", "BKDP", "BKSL", "BUVA"
+      ]
+    },
+    "infrastructure": {
+      "name": "Infrastructure",
+      "description": "Toll roads, utilities, and ports",
+      "tickers": [
+        "ASII", "ICBP", "JPFA", "MAIN", "SMSM", "CMRY", "GOOD", "AVIA", "MIBA", "PSDN",
+        "JSMR", "PTPP", "WIKA", "WSKT", "ADHI", "JKON", "TOTL", "CMNP"
+      ]
+    },
+    "technology": {
+      "name": "Technology",
+      "description": "Tech companies and digital platforms",
+      "tickers": [
+        "GOTO", "BELI", "BUKA", "MCAS", "KREN", "INDO", "DIVA", "ENVY", "DMMX", "NFCX",
+        "EMTK", "DNET", "EDGE", "INET"
+      ]
+    },
+    "healthcare": {
+      "name": "Healthcare",
+      "description": "Pharmaceuticals and hospitals",
+      "tickers": [
+        "KLBF", "SIDO", "SCPI", "TSPC", "DYDX", "MEDS", "HEAL", "OMED", "GIAA", "PRDA",
+        "MIKA", "SILO", "INAF", "BMHS"
+      ]
+    },
+    "finance": {
+      "name": "Finance",
+      "description": "Multifinance and insurance",
+      "tickers": [
+        "BFIN", "ADMF", "WOMF", "LPPS", "BBLD", "MAPI", "MPPA", "ERAA", "AUTO", "SMSM",
+        "CFIN", "BCAP", "PNLF", "PNIN", "ASBI"
+      ]
+    },
+    "automotive": {
+      "name": "Automotive",
+      "description": "Vehicle manufacturers and components",
+      "tickers": ["ASII", "IMAS", "AUTO", "ASSA", "GJTL", "GTBO", "HEXA", "CARS"]
+    },
+    "retail": {
+      "name": "Retail",
+      "description": "Retailers and department stores",
+      "tickers": ["ACES", "ERAA", "MAPI", "MPPA", "RALS", "LPPF", "HERO", "AMRT", "MIDI"]
+    },
+    "cement": {
+      "name": "Cement",
+      "description": "Cement manufacturers",
+      "tickers": ["SMGR", "INTP", "SMBR", "SMCB"]
+    },
+    "tobacco": {
+      "name": "Tobacco",
+      "description": "Cigarette manufacturers",
+      "tickers": ["GGRM", "HMSP"]
+    },
+    "palm_oil": {
+      "name": "Palm Oil",
+      "description": "Palm oil plantations",
+      "tickers": ["AALI", "LSIP", "SSMS", "SIMP", "BWPT", "DSNG", "TBLA", "SGRO"]
+    },
+    "towers": {
+      "name": "Towers",
+      "description": "Telecommunication tower operators",
+      "tickers": ["TBIG", "TOWR", "GOLD"]
+    },
+    "coal": {
+      "name": "Coal",
+      "description": "Coal mining companies",
+      "tickers": ["ADRO", "ITMG", "PTBA", "HRUM", "DOID", "BYAN", "BUMI", "BRMS", "BSSR", "TOBA", "GEMS"]
+    },
+    "nickel": {
+      "name": "Nickel",
+      "description": "Nickel mining and processing",
+      "tickers": ["ANTM", "INCO", "TINS", "NCKL", "NICL", "MBMA"]
+    },
+    "logistics": {
+      "name": "Logistics",
+      "description": "Shipping and logistics services",
+      "tickers": ["ASSA", "BIRD", "TMAS", "SMDR", "SDMU", "IPCM", "PSSI"]
+    },
+    "construction": {
+      "name": "Construction",
+      "description": "Construction and engineering",
+      "tickers": ["PTPP", "WIKA", "WSKT", "ADHI", "JKON", "TOTL", "SSIA", "PPRE"]
+    },
+    "toll_roads": {
+      "name": "Toll Roads",
+      "description": "Toll road operators",
+      "tickers": ["JSMR", "CMNP"]
+    },
+    "gas": {
+      "name": "Gas",
+      "description": "Natural gas distribution",
+      "tickers": ["PGAS", "ESSA", "ENRG", "MEDC", "PGEO", "RGAS"]
+    }
+  }
+}
