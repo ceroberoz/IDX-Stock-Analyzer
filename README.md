@@ -14,7 +14,10 @@ A powerful, user-friendly command-line tool for technical analysis of Indonesian
 
 - 🔍 **Smart Support & Resistance Detection** - Automatically identifies key price levels
 - 📊 **Multi-Timeframe Trend Analysis** - SMA 20, 50, 200 with Golden/Death Cross detection
-- 📈 **Enhanced Technical Charts** - Bollinger Bands, Volume Profile, RSI, SMA lines
+- 📈 **Enhanced Technical Charts** - Bollinger Bands, Volume Profile, RSI, MACD, SMA lines
+- 🕯️ **Candlestick Pattern Detection** - Auto-detect Doji, Hammer, Engulfing, Morning Star patterns
+- 📰 **News Sentiment Overlay** - Visualize sentiment markers on price charts
+- 🎛️ **Chart Customization** - Enable all features with `--all` flag
 - 📰 **News Sentiment Analysis** - FinBERT with Indonesian hybrid (v1.4) optimized for 2025-2026 market trends (FCA, Danantara, MSCI/Moody's shifts)
 - 📁 **Export Options** - Save analysis to CSV or JSON
 - 🎨 **Modern UI** - Beautiful dashboard with emoji-rich insights
@@ -77,6 +80,15 @@ uv run idx-analyzer BBCA --chart --chart-style executive
 
 # 1 year of data for SMA 200
 uv run idx-analyzer BBCA --period 1y --chart
+
+# Chart with candlestick pattern detection
+uv run idx-analyzer BBCA --chart --patterns
+
+# Chart with MACD indicator
+uv run idx-analyzer BBCA --chart --macd
+
+# Chart with all features enabled
+uv run idx-analyzer BBCA --chart --all
 ```
 
 ### Output Files
