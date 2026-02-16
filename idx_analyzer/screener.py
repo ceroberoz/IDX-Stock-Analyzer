@@ -15,6 +15,7 @@ import pandas as pd
 import yfinance as yf
 
 from .analyzer import IDXAnalyzer
+from .sectors_data import LIQUID_UNIVERSE
 
 
 class FilterOperator(Enum):
@@ -96,68 +97,8 @@ class TechnicalScreener:
     """
 
     # Default list of liquid IDX stocks to screen
-    DEFAULT_UNIVERSE = [
-        # Banking
-        "BBCA",
-        "BBRI",
-        "BMRI",
-        "BBNI",
-        "BRIS",
-        "BJTM",
-        "BBKP",
-        "BNGA",
-        # Telco
-        "TLKM",
-        "ISAT",
-        "EXCL",
-        # Mining
-        "BYAN",
-        "ADRO",
-        "ITMG",
-        "ANTM",
-        "INCO",
-        "TINS",
-        # CPO
-        "AALI",
-        "LSIP",
-        "SSMS",
-        "SIMP",
-        # Consumer
-        "UNVR",
-        "ICBP",
-        "INDF",
-        "MYOR",
-        "GGRM",
-        "HMSP",
-        # Property
-        "CTRA",
-        "SMRA",
-        "PWON",
-        "BSDE",
-        "APLN",
-        # Energy
-        "BREN",
-        "PGEO",
-        "ENRG",
-        "ESSA",
-        # Infrastructure
-        "JSMR",
-        "JSMR",
-        "PGAS",
-        "MBSS",
-        # Finance
-        "BFIN",
-        "WOMF",
-        "ADMF",
-        # Others
-        "ASII",
-        "IMAS",
-        "KAEF",
-        "SIDO",
-        "ERAA",
-        "ACES",
-        "MIDI",
-    ]
+    # Uses comprehensive liquid universe from sectors_data
+    DEFAULT_UNIVERSE = LIQUID_UNIVERSE
 
     def __init__(
         self,
