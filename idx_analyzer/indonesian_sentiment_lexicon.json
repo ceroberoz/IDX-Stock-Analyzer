@@ -1,11 +1,11 @@
 {
   "_meta": {
     "description": "Indonesian Financial Sentiment Lexicon for IDX Stock Analyzer",
-    "version": "1.4",
-    "last_updated": "2026-02-15",
+    "version": "1.6",
+    "last_updated": "2026-02-16",
     "notes": [
       "Terms are organized by sentiment category and subcategory",
-      "Multi-word phrases should be listed before single words for proper matching",
+      "Multi-word phrases MUST be listed before single words for proper matching",
       "Weights are assigned automatically: single word=1.0, two words=1.8, 3+ words=2.5"
     ]
   },
@@ -17,8 +17,8 @@
         "tembus resistance",
         "menguat signifikan",
         "merangkak naik",
-        "menguat tipis",
         "rupiah menguat",
+        "menguat tipis",
         "tancap gas",
         "breakout",
         "melesat",
@@ -54,6 +54,9 @@
         "akuisisi strategis",
         "pembagian dividen",
         "pembelian kembali",
+        "akuisisi aset",
+        "akumulasi aset",
+        "penanaman modal",
         "ekspansi bisnis",
         "dividen interim",
         "suntikan modal",
@@ -84,11 +87,14 @@
         "peningkatan laba",
         "pertumbuhan laba",
         "laba operasional",
+        "kinerja resilien",
+        "pertumbuhan solid",
+        "daya beli terjaga",
         "investasi baru",
         "kontrak baru",
         "kinerja moncer",
-        "kinerja baik",
         "pendapatan naik",
+        "kinerja baik",
         "revenue naik",
         "laba meroket",
         "laba bersih",
@@ -107,17 +113,25 @@
         "rekor baru",
         "laba naik",
         "moncer",
-        "beat"
+        "beat",
+        "EPS naik",
+        "ROI naik"
       ]
     },
     "market_sentiment": {
       "description": "Bullish market sentiment terms",
       "terms": [
+        "indeks kepercayaan konsumen",
+        "hilirisasi berkelanjutan",
+        "normalisasi kebijakan",
         "makan bergizi gratis",
         "makan siang gratis",
         "masuk indeks msci",
-        "perumahan rakyat",
+        "swasembada pangan",
+        "swasembada energi",
         "peringkat dinaikkan",
+        "surplus perdagangan",
+        "perumahan rakyat",
         "santa claus rally",
         "rebalancing index",
         "fundamental stabil",
@@ -136,6 +150,8 @@
         "borong saham",
         "minat tinggi",
         "oversubscribed",
+        "inflasi terjaga",
+        "foreign inflow",
         "foreign buy",
         "beli bersih",
         "strong buy",
@@ -144,6 +160,7 @@
         "prospek bagus",
         "kinerja baik",
         "danantara",
+        "asta cita",
         "idxcarbon",
         "hilirisasi",
         "bergairah",
@@ -240,6 +257,7 @@
       "description": "Poor business performance indicators",
       "terms": [
         "pemutusan hubungan kerja",
+        "stagnasi pertumbuhan",
         "missed estimates",
         "beban membengkak",
         "arus kas negatif",
@@ -256,16 +274,20 @@
         "rugi bersih",
         "henti operasi",
         "tutup cabang",
+        "daya beli lesu",
+        "badai phk",
         "rugi",
         "merugi",
         "PHK",
-        "underperform"
+        "underperform",
+        "EPS turun"
       ]
     },
     "market_sentiment": {
       "description": "Bearish market sentiment terms",
       "terms": [
         "pembekuan kenaikan bobot",
+        "ketidakpastian kebijakan",
         "keluar indeks msci",
         "didepak dari msci",
         "peringkat diturunkan",
@@ -273,11 +295,14 @@
         "bobot dikurangi",
         "rebalancing msci",
         "peringkat moody's",
+        "volatilitas global",
+        "risiko geopolitik",
+        "daya beli turun",
         "outlook negatif",
         "prospek negatif",
+        "capital outflow",
         "risiko fiskal",
         "sell on strength",
-        "capital outflow",
         "ketidakpastian",
         "kinerja menurun",
         "kinerja negatif",
@@ -291,6 +316,7 @@
         "kinerja buruk",
         "sentimen buruk",
         "foreign sell",
+        "foreign outflow",
         "market crash",
         "bubble pecah",
         "underweight",
@@ -345,13 +371,20 @@
         "kurang",
         "sulit",
         "gagal",
-        "batal"
+        "batal",
+        "nihil",
+        "minim",
+        "terhambat",
+        "terkendala",
+        "terbatas"
       ]
     },
     "uncertainty": {
       "description": "Words that reduce confidence",
       "terms": [
         "rebalancing indeks",
+        "rebound teknikal",
+        "speculative buy",
         "kocok ulang",
         "kemungkinan",
         "bisa jadi",
@@ -361,13 +394,16 @@
         "tanda-tanda",
         "wait and see",
         "fluktuatif",
+        "oversold",
+        "overbought",
         "sideways",
         "waspada",
         "memantau",
         "stagnan",
         "volatil",
         "mungkin",
-        "mencoba"
+        "mencoba",
+        "menanti"
       ]
     }
   }
