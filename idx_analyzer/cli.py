@@ -46,7 +46,9 @@ Examples:
     )
 
     parser.add_argument(
-        "ticker", help="Stock ticker (e.g., BBCA, TLKM, ASII, or IDX:BBCA)"
+        "ticker",
+        nargs="?",
+        help="Stock ticker (e.g., BBCA, TLKM, ASII, or IDX:BBCA). Not required when using --screener.",
     )
 
     parser.add_argument(
@@ -200,6 +202,104 @@ Examples:
         "--peers-compact",
         action="store_true",
         help="Show peers in compact format: (UP 1000 TICKER)",
+    )
+
+    # ============================================================================
+    # SCREENER OPTIONS
+    # ============================================================================
+    parser.add_argument(
+        "--screener",
+        action="store_true",
+        help="Run technical stock screener",
+    )
+
+    parser.add_argument(
+        "--screener-preset",
+        choices=["oversold", "overbought", "bullish", "macd", "strong-buy"],
+        help="Use preset screener configuration",
+    )
+
+    parser.add_argument(
+        "--rsi-below",
+        type=float,
+        metavar="VALUE",
+        help="Filter stocks with RSI below VALUE (e.g., 30 for oversold)",
+    )
+
+    parser.add_argument(
+        "--rsi-above",
+        type=float,
+        metavar="VALUE",
+        help="Filter stocks with RSI above VALUE (e.g., 70 for overbought)",
+    )
+
+    parser.add_argument(
+        "--above-sma",
+        type=int,
+        choices=[20, 50, 200],
+        metavar="PERIOD",
+        help="Filter stocks above SMA period (20, 50, or 200)",
+    )
+
+    parser.add_argument(
+        "--below-sma",
+        type=int,
+        choices=[20, 50, 200],
+        metavar="PERIOD",
+        help="Filter stocks below SMA period (20, 50, or 200)",
+    )
+
+    parser.add_argument(
+        "--macd-bullish",
+        action="store_true",
+        help="Filter stocks with bullish MACD (histogram > 0)",
+    )
+
+    parser.add_argument(
+        "--macd-bearish",
+        action="store_true",
+        help="Filter stocks with bearish MACD (histogram < 0)",
+    )
+
+    parser.add_argument(
+        "--change-above",
+        type=float,
+        metavar="PERCENT",
+        help="Filter stocks with daily change above PERCENT%",
+    )
+
+    parser.add_argument(
+        "--change-below",
+        type=float,
+        metavar="PERCENT",
+        help="Filter stocks with daily change below PERCENT%",
+    )
+
+    parser.add_argument(
+        "--screener-sector",
+        metavar="SECTOR",
+        help="Screen only stocks in specific sector (e.g., Banking, Mining)",
+    )
+
+    parser.add_argument(
+        "--screener-tickers",
+        metavar="TICKERS",
+        help="Comma-separated list of tickers to screen (default: liquid universe)",
+    )
+
+    parser.add_argument(
+        "--screener-workers",
+        type=int,
+        default=3,
+        metavar="N",
+        help="Number of concurrent workers for screening (default: 3)",
+    )
+
+    parser.add_argument(
+        "--screener-export",
+        choices=["csv", "json"],
+        metavar="FORMAT",
+        help="Export screener results to file (csv or json)",
     )
 
     # --executive is deprecated, use --chart-style executive instead
@@ -509,6 +609,76 @@ def main(args: Optional[list] = None) -> int:
             return 1
 
     ticker = parsed_args.ticker
+
+    # ============================================================================
+    # SCREENER MODE
+    # ============================================================================
+    if parsed_args.screener:
+        from .screener import (
+            TechnicalScreener,
+            build_screener_from_args,
+            create_oversold_screener,
+            create_overbought_screener,
+            create_bullish_trend_screener,
+            create_macd_bullish_screener,
+            create_strong_buy_screener,
+        )
+
+        # Build universe from args
+        universe = None
+        if parsed_args.screener_tickers:
+            universe = [
+                t.strip().upper() for t in parsed_args.screener_tickers.split(",")
+            ]
+        elif parsed_args.screener_sector:
+            from .sectors_data import get_all_tickers_in_sector
+
+            universe = get_all_tickers_in_sector(parsed_args.screener_sector)
+
+        # Use preset or build from args
+        if parsed_args.screener_preset:
+            preset = parsed_args.screener_preset
+            if preset == "oversold":
+                screener = create_oversold_screener()
+            elif preset == "overbought":
+                screener = create_overbought_screener()
+            elif preset == "bullish":
+                screener = create_bullish_trend_screener()
+            elif preset == "macd":
+                screener = create_macd_bullish_screener()
+            elif preset == "strong-buy":
+                screener = create_strong_buy_screener()
+            else:
+                print(f"Unknown preset: {preset}", file=sys.stderr)
+                return 1
+            # Override universe if specified
+            if universe:
+                screener.universe = universe
+        else:
+            screener = build_screener_from_args(parsed_args)
+            if universe:
+                screener.universe = universe
+
+        # Run screening
+        results = screener.screen()
+
+        # Print results
+        screener.print_results(only_passed=True)
+
+        # Export if requested
+        if parsed_args.screener_export:
+            df = screener.to_dataframe(only_passed=True)
+            if not df.empty:
+                from .screener_export import export_screener_results
+
+                export_screener_results(df, parsed_args.screener_export)
+
+        return 0
+
+    # Check ticker is provided for non-screener operations
+    if not ticker:
+        print("Error: ticker is required (unless using --screener)", file=sys.stderr)
+        return 1
 
     # Initialize HTTP cache for Yahoo Finance API
     try:

@@ -9,6 +9,7 @@ Complete guide for using IDX Stock Analyzer.
 - [Quick Start](#quick-start)
 - [Understanding Output](#understanding-output)
 - [Command Reference](#command-reference)
+- [Stock Screener](#stock-screener)
 - [Configuration](#configuration)
 - [Supported Stocks](#supported-stocks)
 
@@ -133,6 +134,20 @@ uv run idx-analyzer <TICKER> [OPTIONS]
 | `--clear-cache` | | Clear HTTP cache | `--clear-cache` |
 | `--quiet` | `-q` | Minimal output for scripting | `--quiet` |
 | `--version` | `-v` | Show version | `--version` |
+| **Screener Options** |
+| `--screener` | | Run technical stock screener | `--screener` |
+| `--screener-preset` | | Use preset: oversold/overbought/bullish/macd/strong-buy | `--screener-preset oversold` |
+| `--rsi-below` | | Filter RSI below value | `--rsi-below 30` |
+| `--rsi-above` | | Filter RSI above value | `--rsi-above 70` |
+| `--above-sma` | | Filter price above SMA (20/50/200) | `--above-sma 50` |
+| `--below-sma` | | Filter price below SMA (20/50/200) | `--below-sma 20` |
+| `--macd-bullish` | | Filter MACD histogram > 0 | `--macd-bullish` |
+| `--macd-bearish` | | Filter MACD histogram < 0 | `--macd-bearish` |
+| `--change-above` | | Filter change % above value | `--change-above 5` |
+| `--change-below` | | Filter change % below value | `--change-below -5` |
+| `--screener-sector` | | Screen specific sector only | `--screener-sector Banking` |
+| `--screener-tickers` | | Custom ticker list (comma-separated) | `--screener-tickers "BBCA,BBRI"` |
+| `--screener-export` | | Export results: csv/json | `--screener-export csv` |
 
 ### Period Options
 
@@ -254,6 +269,113 @@ uv run idx-analyzer BBCA --chart --chart-style executive
 ```
 
 **Note:** The `--executive` flag is deprecated but still works for backward compatibility. Use `--chart --chart-style executive` instead.
+
+---
+
+## Stock Screener
+
+Screen multiple stocks based on technical analysis criteria. The screener analyzes stocks concurrently with rate limiting to avoid API throttling.
+
+### Using Presets
+
+Quick-start with predefined screening criteria:
+
+| Preset | Description | Criteria |
+|--------|-------------|----------|
+| `oversold` | Oversold stocks | RSI < 30 |
+| `overbought` | Overbought stocks | RSI > 70 |
+| `bullish` | Bullish trend | Price > SMA 50 |
+| `macd` | MACD bullish | Histogram > 0 |
+| `strong-buy` | Strong buy signal | RSI 30-50, Price > SMA 20, MACD > 0 |
+
+```bash
+# Find oversold stocks (potential bounce)
+uv run idx-analyzer --screener --screener-preset oversold
+
+# Find bullish trending stocks
+uv run idx-analyzer --screener --screener-preset bullish
+
+# Find strong buy opportunities
+uv run idx-analyzer --screener --screener-preset strong-buy
+```
+
+### Custom Filters
+
+Build your own screening criteria:
+
+```bash
+# RSI-based screening
+uv run idx-analyzer --screener --rsi-below 30                    # Oversold
+uv run idx-analyzer --screener --rsi-above 70                    # Overbought
+
+# SMA-based screening
+uv run idx-analyzer --screener --above-sma 50                    # Above SMA 50
+uv run idx-analyzer --screener --below-sma 20                    # Below SMA 20
+
+# MACD-based screening
+uv run idx-analyzer --screener --macd-bullish                    # MACD histogram > 0
+uv run idx-analyzer --screener --macd-bearish                    # MACD histogram < 0
+
+# Price change screening
+uv run idx-analyzer --screener --change-above 5                  # +5% or more today
+uv run idx-analyzer --screener --change-below -5                 # -5% or more today
+
+# Combined filters (AND logic)
+uv run idx-analyzer --screener --rsi-below 40 --above-sma 50 --macd-bullish
+```
+
+### Sector Filtering
+
+Screen only stocks in specific sectors:
+
+```bash
+# Screen only banking stocks
+uv run idx-analyzer --screener --screener-sector Banking --rsi-below 30
+
+# Screen only mining stocks
+uv run idx-analyzer --screener --screener-sector Mining --macd-bullish
+
+# Available sectors: Banking, Mining, Technology, Property, Consumer, Infrastructure, Finance, Telecommunication
+```
+
+### Custom Universe
+
+Screen specific tickers instead of the default universe:
+
+```bash
+# Screen custom list
+uv run idx-analyzer --screener --screener-tickers "BBCA,BBRI,BMRI,BBNI" --rsi-below 35
+```
+
+### Export Results
+
+Export screening results for further analysis:
+
+```bash
+# Export to CSV
+uv run idx-analyzer --screener --screener-preset oversold --screener-export csv
+
+# Export to JSON
+uv run idx-analyzer --screener --rsi-below 30 --screener-export json
+```
+
+Output files are saved to: `exports/screeners/screener_results_YYYYMMDD_HHMMSS.{csv,json}`
+
+### Screener Output Format
+
+```
+====================================================================================================
+TECHNICAL SCREENER RESULTS
+====================================================================================================
+Found 5 stocks matching all criteria
+
+ Ticker  Passed  Price      Change %   RSI     SMA 20   SMA 50   Trend        Volume
+ ------  ------  ---------  ---------  ------  -------  -------  -----------  --------
+ BBRI    Yes     4125.00    -2.35      28.45   4200.50  4150.25  Bullish      12500000
+ BMRI    Yes     3675.00    -1.85      29.12   3750.00  3700.50  Bullish      9800000
+ ...
+====================================================================================================
+```
 
 ---
 
