@@ -631,7 +631,7 @@ def main(args: Optional[list] = None) -> int:
                 t.strip().upper() for t in parsed_args.screener_tickers.split(",")
             ]
         elif parsed_args.screener_sector:
-            from .sectors_data import get_all_tickers_in_sector
+            from .stocks_data import get_all_tickers_in_sector
 
             universe = get_all_tickers_in_sector(parsed_args.screener_sector)
 

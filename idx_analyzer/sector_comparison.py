@@ -10,7 +10,7 @@ import yfinance as yf
 
 # Ensure cache is configured (idempotent - safe to call multiple times)
 from .cache import configure_yfinance_cache
-from .sectors_data import get_sector_for_ticker, get_sector_peers
+from .stocks_data import get_sector_for_ticker, get_sector_peers
 
 configure_yfinance_cache()
 
