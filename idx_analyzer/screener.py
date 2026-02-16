@@ -15,7 +15,7 @@ import pandas as pd
 import yfinance as yf
 
 from .analyzer import IDXAnalyzer
-from .sectors_data import LIQUID_UNIVERSE
+from .stocks_data import get_lq45_tickers, get_sector_tickers
 
 
 class FilterOperator(Enum):
@@ -73,6 +73,8 @@ class ScreenerResult:
     macd_histogram: Optional[float] = None
     trend: str = ""
     volume: int = 0
+    recommendation: str = ""
+    signal: str = "HOLD"  # BUY, SELL, or HOLD
     failed_filters: List[str] = field(default_factory=list)
     error: Optional[str] = None
 
@@ -97,8 +99,8 @@ class TechnicalScreener:
     """
 
     # Default list of liquid IDX stocks to screen
-    # Uses comprehensive liquid universe from sectors_data
-    DEFAULT_UNIVERSE = LIQUID_UNIVERSE
+    # Uses LQ45 - 45 most liquid stocks on IDX
+    DEFAULT_UNIVERSE = get_lq45_tickers()
 
     def __init__(
         self,
@@ -140,6 +142,9 @@ class TechnicalScreener:
                         f"{filter_criteria.name}: {value:.2f} (required: {filter_criteria.operator.value} {filter_criteria.value})"
                     )
 
+            # Determine signal from recommendation
+            signal = self._recommendation_to_signal(result.recommendation)
+
             return ScreenerResult(
                 ticker=ticker,
                 passed=len(failed_filters) == 0,
@@ -154,6 +159,8 @@ class TechnicalScreener:
                 macd_histogram=result.macd_histogram,
                 trend=result.trend,
                 volume=result.volume,
+                recommendation=result.recommendation,
+                signal=signal,
                 failed_filters=failed_filters,
             )
 
@@ -215,12 +222,37 @@ class TechnicalScreener:
 
         return self.results
 
+    def _recommendation_to_signal(self, recommendation: str) -> str:
+        """Convert detailed recommendation to BUY/SELL/HOLD signal."""
+        rec_upper = recommendation.upper()
+        if (
+            "BULLISH" in rec_upper
+            or "BUY" in rec_upper
+            or "OVERSOLD" in rec_upper
+            or "BOUNCE" in rec_upper
+        ):
+            return "BUY"
+        elif (
+            "BEARISH" in rec_upper
+            or "SELL" in rec_upper
+            or "AVOID" in rec_upper
+            or "OVEREXTENDED" in rec_upper
+            or "PULLBACK" in rec_upper
+        ):
+            return "SELL"
+        return "HOLD"
+
     def get_passed_stocks(self) -> List[ScreenerResult]:
         """Get only stocks that passed all filters."""
         return [r for r in self.results if r.passed]
 
-    def to_dataframe(self, only_passed: bool = False) -> pd.DataFrame:
-        """Convert results to pandas DataFrame."""
+    def to_dataframe(
+        self,
+        only_passed: bool = False,
+        sort_by: str = "Volume",
+        ascending: bool = False,
+    ) -> pd.DataFrame:
+        """Convert results to pandas DataFrame, sorted by volume (descending) by default."""
         data = self.get_passed_stocks() if only_passed else self.results
 
         if not data:
@@ -230,7 +262,7 @@ class TechnicalScreener:
         for r in data:
             row = {
                 "Ticker": r.ticker,
-                "Passed": "Yes" if r.passed else "No",
+                "Signal": r.signal,
                 "Price": r.current_price,
                 "Change %": r.change_percent,
                 "RSI": r.rsi,
@@ -245,7 +277,14 @@ class TechnicalScreener:
                 row["Failed Filters"] = "; ".join(r.failed_filters)
             rows.append(row)
 
-        return pd.DataFrame(rows)
+        df = pd.DataFrame(rows)
+
+        # Sort by specified column (default: Volume, descending)
+        if sort_by in df.columns and not df.empty:
+            # Handle NaN values by placing them at the end
+            df = df.sort_values(by=sort_by, ascending=ascending, na_position="last")
+
+        return df
 
     def print_results(
         self,
@@ -487,7 +526,7 @@ def build_screener_from_args(args) -> TechnicalScreener:
     universe = None
     if args.screener_sector:
         # Filter universe by sector
-        from .sectors_data import get_tickers_by_sector
+        from .stocks_data import get_tickers_by_sector
 
         universe = get_tickers_by_sector(args.screener_sector)
     elif args.screener_tickers:
