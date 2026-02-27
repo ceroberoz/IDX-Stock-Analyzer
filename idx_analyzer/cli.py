@@ -82,9 +82,8 @@ Examples:
     )
 
     parser.add_argument(
-        "-e", "--export", choices=["csv", "json"], help="Export analysis to file format"
+        "-e", "--export", choices=["csv", "json", "excel"], help="Export analysis to file format"
     )
-
     parser.add_argument("-o", "--output", help="Output file path for export")
 
     parser.add_argument(
@@ -629,6 +628,231 @@ def export_to_json(result, filepath: str):
     print(f"Exported to: {filepath}")
 
 
+def export_to_excel(result, filepath: str):
+    """Export analysis to Excel with multiple sheets and formatting."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+    from datetime import datetime
+
+    wb = Workbook()
+    
+    # Define styles
+    header_font = Font(bold=True, color="FFFFFF", size=11)
+    header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    positive_fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
+    negative_fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
+    neutral_fill = PatternFill(start_color="FFEB9C", end_color="FFEB9C", fill_type="solid")
+    thin_border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    
+    # Helper function to style headers
+    def style_headers(ws, row_num):
+        for cell in ws[row_num]:
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+            cell.border = thin_border
+    
+    # Helper function to auto-adjust column widths
+    def auto_width(ws):
+        for column in ws.columns:
+            max_length = 0
+            column_letter = get_column_letter(column[0].column)
+            for cell in column:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except:
+                    pass
+            adjusted_width = min(max_length + 2, 50)
+            ws.column_dimensions[column_letter].width = adjusted_width
+    
+    # ===== SHEET 1: Summary =====
+    ws_summary = wb.active
+    ws_summary.title = "Summary"
+    
+    # Title
+    ws_summary['A1'] = f"Stock Analysis Report - {result.ticker}"
+    ws_summary['A1'].font = Font(bold=True, size=16, color="4472C4")
+    ws_summary['A2'] = f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+    ws_summary['A2'].font = Font(italic=True, size=10)
+    ws_summary.merge_cells('A1:D1')
+    ws_summary.merge_cells('A2:D2')
+    
+    # Current Price Section
+    ws_summary['A4'] = "Current Price"
+    ws_summary['A4'].font = Font(bold=True, size=12)
+    ws_summary['B4'] = result.current_price
+    ws_summary['B4'].number_format = '#,##0.00'
+    ws_summary['B4'].font = Font(bold=True, size=14)
+    
+    ws_summary['A5'] = "Change %"
+    ws_summary['B5'] = result.change_percent / 100
+    ws_summary['B5'].number_format = '0.00%'
+    if result.change_percent > 0:
+        ws_summary['B5'].fill = positive_fill
+    elif result.change_percent < 0:
+        ws_summary['B5'].fill = negative_fill
+    
+    ws_summary['A6'] = "Volume"
+    ws_summary['B6'] = result.volume
+    ws_summary['B6'].number_format = '#,##0'
+    
+    ws_summary['A7'] = "52-Week High"
+    ws_summary['B7'] = result.week_52_high
+    ws_summary['B7'].number_format = '#,##0.00'
+    
+    ws_summary['A8'] = "52-Week Low"
+    ws_summary['B8'] = result.week_52_low
+    ws_summary['B8'].number_format = '#,##0.00'
+    
+    ws_summary['A9'] = "Trend"
+    ws_summary['B9'] = result.trend
+    ws_summary['A10'] = "Recommendation"
+    ws_summary['B10'] = result.recommendation
+    
+    # Summary text
+    ws_summary['A12'] = "Summary"
+    ws_summary['A12'].font = Font(bold=True, size=12)
+    ws_summary['A13'] = result.summary
+    ws_summary['A13'].alignment = Alignment(wrap_text=True, vertical='top')
+    ws_summary.merge_cells('A13:D15')
+    ws_summary.row_dimensions[13].height = 60
+    
+    # ===== SHEET 2: Technicals =====
+    ws_tech = wb.create_sheet("Technicals")
+    
+    # Technical Indicators
+    ws_tech['A1'] = "Technical Indicators"
+    ws_tech['A1'].font = Font(bold=True, size=14, color="4472C4")
+    
+    headers = ["Indicator", "Value", "Status"]
+    ws_tech.append(headers)
+    style_headers(ws_tech, 2)
+    
+    # RSI
+    rsi_status = "Overbought" if result.rsi > 70 else "Oversold" if result.rsi < 30 else "Neutral"
+    ws_tech.append(["RSI (14)", result.rsi, rsi_status])
+    
+    # Moving Averages
+    ws_tech.append(["SMA 20", result.sma_20, ""])
+    ws_tech.append(["SMA 50", result.sma_50, ""])
+    if result.sma_200:
+        ws_tech.append(["SMA 200", result.sma_200, ""])
+    
+    # MACD
+    if result.macd_line:
+        macd_status = "Bullish" if result.macd_histogram and result.macd_histogram > 0 else "Bearish"
+        ws_tech.append(["MACD Line", result.macd_line, ""])
+        ws_tech.append(["MACD Signal", result.macd_signal, ""])
+        ws_tech.append(["MACD Histogram", result.macd_histogram, macd_status])
+    
+    # Bollinger Bands
+    if result.bb_middle:
+        ws_tech.append(["BB Middle", result.bb_middle, ""])
+        ws_tech.append(["BB Upper", result.bb_upper, ""])
+        ws_tech.append(["BB Lower", result.bb_lower, ""])
+        ws_tech.append(["BB Position", result.bb_position, ""])
+    
+    # Volume Profile
+    if result.vp_poc:
+        ws_tech.append(["Volume POC", result.vp_poc, ""])
+        ws_tech.append(["Value Area High", result.vp_value_area_high, ""])
+        ws_tech.append(["Value Area Low", result.vp_value_area_low, ""])
+        ws_tech.append(["Total Volume", result.vp_total_volume, ""])
+    
+    # Format numbers
+    for row in ws_tech.iter_rows(min_row=3, max_row=ws_tech.max_row):
+        if isinstance(row[1].value, (int, float)):
+            row[1].number_format = '#,##0.00'
+        # Apply conditional formatting based on status
+        if row[2].value == "Overbought":
+            row[2].fill = negative_fill
+        elif row[2].value == "Oversold":
+            row[2].fill = positive_fill
+        elif row[2].value == "Bullish":
+            row[2].fill = positive_fill
+        elif row[2].value == "Bearish":
+            row[2].fill = negative_fill
+    
+    auto_width(ws_tech)
+    
+    # Support & Resistance Section
+    start_row = ws_tech.max_row + 3
+    ws_tech.cell(row=start_row, column=1, value="Support & Resistance Levels")
+    ws_tech.cell(row=start_row, column=1).font = Font(bold=True, size=14, color="4472C4")
+    
+    headers = ["Type", "Level", "Distance %", "Strength", "Description"]
+    ws_tech.append(headers)
+    style_headers(ws_tech, start_row + 1)
+    
+    # Support levels
+    for s in result.support_levels:
+        dist = (result.current_price - s.level) / result.current_price * 100
+        ws_tech.append([
+            "Support",
+            s.level,
+            f"-{dist:.2f}%",
+            s.strength,
+            s.description
+        ])
+    
+    # Resistance levels
+    for r in result.resistance_levels:
+        dist = (r.level - result.current_price) / result.current_price * 100
+        ws_tech.append([
+            "Resistance",
+            r.level,
+            f"+{dist:.2f}%",
+            r.strength,
+            r.description
+        ])
+    
+    # Format S/R data
+    for row in ws_tech.iter_rows(min_row=start_row + 2, max_row=ws_tech.max_row):
+        row[1].number_format = '#,##0.00'
+        if row[0].value == "Support":
+            row[0].fill = positive_fill
+        elif row[0].value == "Resistance":
+            row[0].fill = negative_fill
+    
+    auto_width(ws_tech)
+    
+    # ===== SHEET 3: Fundamentals =====
+    ws_fund = wb.create_sheet("Fundamentals")
+    
+    ws_fund['A1'] = "Fundamental Data"
+    ws_fund['A1'].font = Font(bold=True, size=14, color="4472C4")
+    
+    headers = ["Metric", "Value"]
+    ws_fund.append(headers)
+    style_headers(ws_fund, 2)
+    
+    fundamentals = [
+        ("Market Cap", result.market_cap, '#,##0'),
+        ("P/E Ratio", result.pe_ratio, '0.00'),
+        ("Dividend Yield", result.dividend_yield, '0.00%' if result.dividend_yield else None),
+    ]
+    
+    for metric, value, fmt in fundamentals:
+        if value is not None:
+            row = [metric, value]
+            ws_fund.append(row)
+            if fmt:
+                ws_fund.cell(row=ws_fund.max_row, column=2).number_format = fmt
+    
+    auto_width(ws_fund)
+    
+    # Save workbook
+    wb.save(filepath)
+    print(f"Exported to: {filepath}")
+
+
 def main(args: Optional[list] = None) -> int:
     """Main entry point"""
     parser = create_parser()
@@ -1037,11 +1261,14 @@ def main(args: Optional[list] = None) -> int:
             if parsed_args.output:
                 filepath = parsed_args.output
             else:
-                filename = f"{result.ticker}_analysis.{parsed_args.export}"
+                ext = "xlsx" if parsed_args.export == "excel" else parsed_args.export
+                filename = f"{result.ticker}_analysis.{ext}"
                 filepath = get_output_path("exports", result.ticker, filename)
 
             if parsed_args.export == "csv":
                 export_to_csv(result, filepath)
+            elif parsed_args.export == "excel":
+                export_to_excel(result, filepath)
             else:
                 export_to_json(result, filepath)
 
