@@ -78,9 +78,8 @@ Examples:
         "-i",
         "--interval",
         choices=["1m", "5m", "15m", "30m", "1h", "1d", "1wk", "1mo"],
-        help="Data interval (1m-1h for intraday, limited to 7d-3mo). Default: 1d",
+        help="Data interval (intraday: 1m=7d max, 5-30m=1mo max, 1h=3mo max). Default: 1d",
     )
-
     parser.add_argument(
         "-e", "--export", choices=["csv", "json", "excel"], help="Export analysis to file format"
     )
