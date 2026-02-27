@@ -15,6 +15,9 @@ Usage:
     generate_chart(analyzer, style='executive', output_path='executive.png')
 """
 
+import logging
+
+
 from typing import TYPE_CHECKING, Literal, Optional
 
 import matplotlib.patches as mpatches
@@ -25,6 +28,7 @@ from matplotlib.gridspec import GridSpec
 if TYPE_CHECKING:
     from .analyzer import IDXAnalyzer
 
+logger = logging.getLogger(__name__)
 
 # ============================================================================
 # UNIFIED THEME SYSTEM
@@ -323,7 +327,8 @@ def generate_standard_chart(
                         va="bottom",
                         color=color,
                     )
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Failed to annotate chart: {e}")
             pass
 
     ax1.tick_params(colors=CTP["tick_color"])
@@ -624,7 +629,8 @@ def generate_standard_chart(
                     edgecolor=CTP["surface0"],
                     labelcolor=CTP["text"],
                 )
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Failed to add sentiment legend: {e}")
             pass
     else:
         # Show message when no sentiment data available

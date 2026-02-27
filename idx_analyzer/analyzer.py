@@ -2,6 +2,8 @@
 Core analysis module for IDX stocks with enhanced error handling and configuration support.
 """
 
+import logging
+
 import re
 import time
 from typing import List, Optional, Tuple
@@ -21,6 +23,7 @@ from .exceptions import (
     NetworkError,
 )
 
+logger = logging.getLogger(__name__)
 
 class SupportResistance:
     """Support and resistance levels"""
@@ -136,24 +139,79 @@ class IDXAnalyzer:
             ticker = f"{ticker}.JK"
         return ticker.upper()
 
+    # Valid intervals and their max periods (Yahoo Finance limits)
+    INTRADAY_INTERVALS = {
+        "1m": {"max_period": "7d", "description": "1 minute"},
+        "2m": {"max_period": "1mo", "description": "2 minute"},
+        "5m": {"max_period": "1mo", "description": "5 minute"},
+        "15m": {"max_period": "1mo", "description": "15 minute"},
+        "30m": {"max_period": "1mo", "description": "30 minute"},
+        "60m": {"max_period": "3mo", "description": "60 minute"},
+        "1h": {"max_period": "3mo", "description": "1 hour"},
+        "90m": {"max_period": "3mo", "description": "90 minute"},
+    }
+
+    VALID_INTERVALS = list(INTRADAY_INTERVALS.keys()) + [
+        "1d",
+        "5d",
+        "1wk",
+        "1mo",
+        "3mo",
+    ]
+
     @with_retry()
-    def _fetch_with_retry(self, period: str) -> Tuple[pd.DataFrame, dict]:
+    def _fetch_with_retry(
+        self, period: str, interval: str = "1d"
+    ) -> Tuple[pd.DataFrame, dict]:
         """Fetch data with retry logic"""
-        hist = self.stock.history(period=period)
+        hist = self.stock.history(period=period, interval=interval)
         info = {}
         try:
             info = self.stock.info or {}
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Failed to fetch stock info: {e}"),
             pass
         return hist, info
 
-    def fetch_data(self, period: Optional[str] = None) -> bool:
-        """Fetch historical data and stock info with error handling"""
+    def fetch_data(
+        self, period: Optional[str] = None, interval: Optional[str] = None
+    ) -> bool:
+        """Fetch historical data and stock info with error handling
+
+        Args:
+            period: Data period (e.g., '1d', '5d', '1mo', '3mo', '6mo', '1y', '2y', '5y', '10y', 'ytd', 'max')
+            interval: Data interval (e.g., '1m', '5m', '15m', '30m', '1h', '1d', '1wk', '1mo')
+                     Intraday intervals (1m-1h) have limited history (7d-3mo max)
+        """
         if period is None:
             period = self.config.analysis.default_period
 
+        if interval is None:
+            interval = "1d"
+
+        # Validate interval
+        if interval not in self.VALID_INTERVALS:
+            raise AnalysisError(
+                f"Invalid interval: {interval}",
+                f"Valid intervals: {', '.join(self.VALID_INTERVALS)}",
+            )
+
+        # Adjust period for intraday intervals (Yahoo limits)
+        if interval in self.INTRADAY_INTERVALS:
+            max_period = self.INTRADAY_INTERVALS[interval]["max_period"]
+            # Simple period comparison (this is approximate)
+            period_days = self._period_to_days(period)
+            max_days = self._period_to_days(max_period)
+
+            if period_days > max_days:
+                self.app.notify(
+                    f"{interval} data limited to {max_period}, adjusting...",
+                    severity="warning",
+                ) if hasattr(self, "app") else None
+                period = max_period
+
         try:
-            self.hist, self.info = self._fetch_with_retry(period)
+            self.hist, self.info = self._fetch_with_retry(period, interval)
 
             if self.hist is None or len(self.hist) == 0:
                 raise InvalidTickerError(
@@ -192,6 +250,24 @@ class IDXAnalyzer:
                 ticker=self.ticker.replace(".JK", ""),
                 details=str(e),
             )
+
+    def _period_to_days(self, period: str) -> int:
+        """Convert period string to approximate days"""
+        period_map = {
+            "1d": 1,
+            "5d": 5,
+            "7d": 7,
+            "1mo": 30,
+            "3mo": 90,
+            "6mo": 180,
+            "1y": 365,
+            "2y": 730,
+            "5y": 1825,
+            "10y": 3650,
+            "ytd": 365,
+            "max": 3650,
+        }
+        return period_map.get(period, 365)
 
     def _calculate_rsi(self, window: Optional[int] = None) -> pd.Series:
         """Calculate Relative Strength Index"""
@@ -333,6 +409,180 @@ class IDXAnalyzer:
             value_area_high = price_high
 
         return poc, value_area_high, value_area_low, float(total_volume)
+
+    # ============================================================================
+    # MILESTONE 1.2: NEW TECHNICAL INDICATORS
+    # ============================================================================
+
+    def _calculate_stochastic(
+        self, k_period: int = 14, d_period: int = 3, smooth_k: int = 3
+    ) -> Tuple[pd.Series, pd.Series]:
+        """Calculate Stochastic Oscillator (%K and %D)
+
+        Args:
+            k_period: Period for %K calculation (default: 14)
+            d_period: Period for %D smoothing (default: 3)
+            smooth_k: Smoothing for %K (default: 3)
+
+        Returns:
+            Tuple of (%K, %D) series
+        """
+        if self.hist is None or len(self.hist) < k_period:
+            empty = pd.Series([50.0] * (len(self.hist) if self.hist is not None else 0))
+            return empty, empty
+
+        # Calculate %K
+        lowest_low = self.hist["Low"].rolling(window=k_period).min()
+        highest_high = self.hist["High"].rolling(window=k_period).max()
+
+        # Avoid division by zero
+        range_hl = highest_high - lowest_low
+        range_hl = range_hl.replace(0, np.nan)
+
+        k_raw = 100 * (self.hist["Close"] - lowest_low) / range_hl
+
+        # Smooth %K
+        if smooth_k > 1:
+            k = k_raw.rolling(window=smooth_k).mean()
+        else:
+            k = k_raw
+
+        # Calculate %D (SMA of %K)
+        d = k.rolling(window=d_period).mean()
+
+        return k, d
+
+    def _calculate_atr(self, period: int = 14) -> pd.Series:
+        """Calculate Average True Range (ATR)
+
+        ATR measures market volatility by decomposing the entire range
+        of an asset price for that period.
+
+        Args:
+            period: ATR period (default: 14)
+
+        Returns:
+            ATR series
+        """
+        if self.hist is None or len(self.hist) < period:
+            return pd.Series([0.0] * (len(self.hist) if self.hist is not None else 0))
+
+        high = self.hist["High"]
+        low = self.hist["Low"]
+        close = self.hist["Close"]
+
+        # Calculate True Range
+        tr1 = high - low
+        tr2 = abs(high - close.shift(1))
+        tr3 = abs(low - close.shift(1))
+
+        true_range = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+
+        # Calculate ATR using Wilder's smoothing
+        atr = true_range.ewm(alpha=1 / period, min_periods=period).mean()
+
+        return atr
+
+    def _calculate_obv(self) -> pd.Series:
+        """Calculate On-Balance Volume (OBV)
+
+        OBV is a momentum indicator that uses volume flow to predict
+        changes in stock price.
+
+        Returns:
+            OBV series
+        """
+        if self.hist is None or len(self.hist) == 0:
+            return pd.Series([])
+
+        close = self.hist["Close"]
+        volume = self.hist["Volume"]
+
+        # Calculate OBV
+        obv = pd.Series(index=close.index, dtype=float)
+        obv.iloc[0] = volume.iloc[0]
+
+        for i in range(1, len(close)):
+            if close.iloc[i] > close.iloc[i - 1]:
+                obv.iloc[i] = obv.iloc[i - 1] + volume.iloc[i]
+            elif close.iloc[i] < close.iloc[i - 1]:
+                obv.iloc[i] = obv.iloc[i - 1] - volume.iloc[i]
+            else:
+                obv.iloc[i] = obv.iloc[i - 1]
+
+        return obv
+
+    def _calculate_ichimoku(
+        self, tenkan_period: int = 9, kijun_period: int = 26, senkou_b_period: int = 52
+    ) -> Tuple[pd.Series, pd.Series, pd.Series, pd.Series, pd.Series]:
+        """Calculate Ichimoku Cloud components
+
+        Args:
+            tenkan_period: Tenkan-sen (conversion line) period (default: 9)
+            kijun_period: Kijun-sen (base line) period (default: 26)
+            senkou_b_period: Senkou Span B period (default: 52)
+
+        Returns:
+            Tuple of (tenkan_sen, kijun_sen, senkou_span_a, senkou_span_b, chikou_span)
+        """
+        if self.hist is None or len(self.hist) < senkou_b_period:
+            empty = pd.Series([0.0] * (len(self.hist) if self.hist is not None else 0))
+            return empty, empty, empty, empty, empty
+
+        high = self.hist["High"]
+        low = self.hist["Low"]
+        close = self.hist["Close"]
+
+        # Tenkan-sen (Conversion Line): (Highest High + Lowest Low) / 2 for 9 periods
+        tenkan_sen = (
+            high.rolling(window=tenkan_period).max()
+            + low.rolling(window=tenkan_period).min()
+        ) / 2
+
+        # Kijun-sen (Base Line): (Highest High + Lowest Low) / 2 for 26 periods
+        kijun_sen = (
+            high.rolling(window=kijun_period).max()
+            + low.rolling(window=kijun_period).min()
+        ) / 2
+
+        # Senkou Span A (Leading Span A): (Tenkan-sen + Kijun-sen) / 2, shifted forward 26 periods
+        senkou_span_a = ((tenkan_sen + kijun_sen) / 2).shift(kijun_period)
+
+        # Senkou Span B (Leading Span B): (Highest High + Lowest Low) / 2 for 52 periods, shifted forward 26
+        senkou_span_b = (
+            (
+                high.rolling(window=senkou_b_period).max()
+                + low.rolling(window=senkou_b_period).min()
+            )
+            / 2
+        ).shift(kijun_period)
+
+        # Chikou Span (Lagging Span): Close price shifted back 26 periods
+        chikou_span = close.shift(-kijun_period)
+
+        return tenkan_sen, kijun_sen, senkou_span_a, senkou_span_b, chikou_span
+
+    def _calculate_vwap(self) -> pd.Series:
+        """Calculate Volume Weighted Average Price (VWAP)
+
+        VWAP is the average price weighted by volume. Reset daily for
+        intraday charts.
+
+        Returns:
+            VWAP series
+        """
+        if self.hist is None or len(self.hist) == 0:
+            return pd.Series([])
+
+        # Typical price = (High + Low + Close) / 3
+        typical_price = (self.hist["High"] + self.hist["Low"] + self.hist["Close"]) / 3
+
+        # VWAP = Cumulative(Typical Price * Volume) / Cumulative(Volume)
+        vwap = (typical_price * self.hist["Volume"]).cumsum() / self.hist[
+            "Volume"
+        ].cumsum()
+
+        return vwap
 
     def _find_support_levels(self) -> List[SupportResistance]:
         """Find key support levels"""

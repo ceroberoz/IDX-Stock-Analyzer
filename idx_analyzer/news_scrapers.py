@@ -112,7 +112,7 @@ def parse_indonesian_date(text: str) -> Optional[datetime]:
         try:
             return datetime(int(m.group(3)), int(m.group(2)), int(m.group(1)))
         except ValueError:
-            pass
+            logger.debug(f"Failed to parse DD/MM/YYYY date: {text}")
 
     # "DD Month YYYY" or "Hari, DD Month YYYY HH:MM WIB"
     # Strip day-of-week prefix if present
@@ -127,7 +127,7 @@ def parse_indonesian_date(text: str) -> Optional[datetime]:
                 year = int(m.group(2))
                 return datetime(year, bulan_num, day)
             except ValueError:
-                pass
+                logger.debug(f"Failed to parse Indonesian date: {text}")
 
     # English abbreviated months as fallback
     try:
@@ -137,8 +137,8 @@ def parse_indonesian_date(text: str) -> Optional[datetime]:
                 return datetime.strptime(text_clean.split("|")[0].strip(), fmt)
             except ValueError:
                 continue
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"Failed to parse date '{text}': {e}")
 
     return None
 

@@ -2,6 +2,8 @@
 Command-line interface for IDX Analyzer
 """
 
+import logging
+
 import argparse
 import shutil
 import sys
@@ -21,6 +23,20 @@ from .exceptions import (
     NetworkError,
     format_error_for_user,
 )
+
+logger = logging.getLogger(__name__)
+
+def run_tui_mode():
+    """Launch TUI mode"""
+    try:
+        from .tui.app import run_tui
+
+        run_tui()
+    except ImportError as e:
+        print(f"Error: TUI dependencies not installed: {e}", file=sys.stderr)
+        print("\nTo use TUI mode, ensure textual is installed:", file=sys.stderr)
+        print("   uv add textual textual-plotext", file=sys.stderr)
+        sys.exit(1)
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -54,8 +70,15 @@ Examples:
     parser.add_argument(
         "-p",
         "--period",
-        choices=["1mo", "3mo", "6mo", "1y", "2y", "5y"],
+        choices=["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y"],
         help="Historical data period (default: from config or 6mo)",
+    )
+
+    parser.add_argument(
+        "-i",
+        "--interval",
+        choices=["1m", "5m", "15m", "30m", "1h", "1d", "1wk", "1mo"],
+        help="Data interval (1m-1h for intraday, limited to 7d-3mo). Default: 1d",
     )
 
     parser.add_argument(
@@ -265,20 +288,32 @@ Examples:
         "--change-above",
         type=float,
         metavar="PERCENT",
-        help="Filter stocks with daily change above PERCENT%",
+        help="Filter stocks with daily change above PERCENT%%",
     )
 
     parser.add_argument(
         "--change-below",
         type=float,
         metavar="PERCENT",
-        help="Filter stocks with daily change below PERCENT%",
+        help="Filter stocks with daily change below PERCENT%%",
     )
 
     parser.add_argument(
         "--screener-sector",
         metavar="SECTOR",
         help="Screen only stocks in specific sector (e.g., Banking, Mining)",
+    )
+
+    parser.add_argument(
+        "--screener-index",
+        metavar="INDEX",
+        help="Screen only stocks in specific index (e.g., LQ45, MSCI, Danantara)",
+    )
+
+    parser.add_argument(
+        "--screener-board",
+        metavar="BOARD",
+        help="Screen only stocks in specific board (e.g., Utama, Pengembangan)",
     )
 
     parser.add_argument(
@@ -309,7 +344,46 @@ Examples:
         help=argparse.SUPPRESS,  # Hidden from help
     )
 
+    # ============================================================================
+    # CORPORATE ACTIONS & BATCH OPTIONS
+    # ============================================================================
+    parser.add_argument(
+        "--dividends",
+        action="store_true",
+        help="Show dividend history and yield information",
+    )
+
+    parser.add_argument(
+        "--splits",
+        action="store_true",
+        help="Show stock splits history",
+    )
+
+    parser.add_argument(
+        "--actions",
+        action="store_true",
+        help="Show corporate actions timeline (dividends, splits, earnings)",
+    )
+
+    parser.add_argument(
+        "--batch",
+        metavar="TICKERS",
+        help="Batch download data for multiple tickers (comma-separated, e.g., BBCA,BBRI,TLKM)",
+    )
+
+    parser.add_argument(
+        "--batch-period",
+        default="6mo",
+        help="Period for batch download (default: 6mo)",
+    )
+
     parser.add_argument("-v", "--version", action="version", version="%(prog)s 1.0.0")
+
+    parser.add_argument(
+        "--tui",
+        action="store_true",
+        help="Launch TUI mode (Bloomberg-style terminal interface)",
+    )
 
     return parser
 
@@ -560,6 +634,11 @@ def main(args: Optional[list] = None) -> int:
     parser = create_parser()
     parsed_args = parser.parse_args(args)
 
+    # Launch TUI mode if requested
+    if parsed_args.tui:
+        run_tui_mode()
+        return 0
+
     if parsed_args.init_config:
         try:
             config_path = create_default_config()
@@ -617,10 +696,10 @@ def main(args: Optional[list] = None) -> int:
         from .screener import (
             TechnicalScreener,
             build_screener_from_args,
-            create_oversold_screener,
-            create_overbought_screener,
             create_bullish_trend_screener,
             create_macd_bullish_screener,
+            create_overbought_screener,
+            create_oversold_screener,
             create_strong_buy_screener,
         )
 
@@ -634,6 +713,14 @@ def main(args: Optional[list] = None) -> int:
             from .stocks_data import get_all_tickers_in_sector
 
             universe = get_all_tickers_in_sector(parsed_args.screener_sector)
+        elif parsed_args.screener_index:
+            from .stocks_data import get_index_tickers
+
+            universe = get_index_tickers(parsed_args.screener_index)
+        elif parsed_args.screener_board:
+            from .stocks_data import get_board_tickers
+
+            universe = get_board_tickers(parsed_args.screener_board)
 
         # Use preset or build from args
         if parsed_args.screener_preset:
@@ -675,9 +762,49 @@ def main(args: Optional[list] = None) -> int:
 
         return 0
 
+    # ============================================================================
+    # BATCH DOWNLOAD MODE
+    # ============================================================================
+    if parsed_args.batch:
+        try:
+            from .batch_download import batch_download, format_batch_summary
+
+            tickers_list = [t.strip() for t in parsed_args.batch.split(",") if t.strip()]
+            if not tickers_list:
+                print("Error: --batch requires comma-separated tickers", file=sys.stderr)
+                return 1
+
+            print(f"\n📦 Batch downloading {len(tickers_list)} tickers...")
+            result = batch_download(
+                tickers_list,
+                period=parsed_args.batch_period,
+            )
+            print(format_batch_summary(result))
+
+            if parsed_args.export:
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                filename = f"batch_{timestamp}.{parsed_args.export}"
+                output_dir = Path("exports") / "batch"
+                output_dir.mkdir(parents=True, exist_ok=True)
+                filepath = parsed_args.output or str(output_dir / filename)
+
+                if parsed_args.export == "csv":
+                    result.data.to_csv(filepath)
+                else:
+                    result.data.to_json(filepath, orient="split", indent=2)
+                print(f"Exported to: {filepath}")
+
+            return 0
+        except Exception as e:
+            print(f"Batch download failed: {e}", file=sys.stderr)
+            return 1
+
     # Check ticker is provided for non-screener operations
     if not ticker:
-        print("Error: ticker is required (unless using --screener)", file=sys.stderr)
+        print(
+            "Error: ticker is required (unless using --screener or --batch)",
+            file=sys.stderr,
+        )
         return 1
 
     # Initialize HTTP cache for Yahoo Finance API
@@ -686,6 +813,51 @@ def main(args: Optional[list] = None) -> int:
     except Exception as e:
         # Non-fatal: continue without cache
         print(f"Warning: Could not initialize cache: {e}", file=sys.stderr)
+
+    # ============================================================================
+    # CORPORATE ACTIONS MODE
+    # ============================================================================
+    if parsed_args.dividends:
+        try:
+            from .corporate_actions import format_dividend_report, get_dividend_info
+
+            if not parsed_args.quiet:
+                print(f"\nFetching dividend data for {ticker}...")
+            info = get_dividend_info(ticker)
+            print(format_dividend_report(info))
+            return 0
+        except Exception as e:
+            print(f"Dividend analysis failed: {e}", file=sys.stderr)
+            return 1
+
+    if parsed_args.splits:
+        try:
+            from .corporate_actions import format_splits_report, get_splits_history
+
+            if not parsed_args.quiet:
+                print(f"\nFetching stock splits for {ticker}...")
+            splits = get_splits_history(ticker)
+            print(format_splits_report(ticker, splits))
+            return 0
+        except Exception as e:
+            print(f"Splits history failed: {e}", file=sys.stderr)
+            return 1
+
+    if parsed_args.actions:
+        try:
+            from .corporate_actions import (
+                format_corporate_actions_report,
+                get_corporate_actions,
+            )
+
+            if not parsed_args.quiet:
+                print(f"\nFetching corporate actions for {ticker}...")
+            actions = get_corporate_actions(ticker)
+            print(format_corporate_actions_report(ticker, actions))
+            return 0
+        except Exception as e:
+            print(f"Corporate actions failed: {e}", file=sys.stderr)
+            return 1
 
     if (
         parsed_args.sentiment
@@ -777,7 +949,13 @@ def main(args: Optional[list] = None) -> int:
             print(f"\nAnalyzing {analyzer.ticker}...")
             print(f"   Fetching {period} of historical data...")
 
-        analyzer.fetch_data(period=period)
+        # Get interval (for intraday support)
+        interval = parsed_args.interval
+        if interval:
+            if not parsed_args.quiet:
+                print(f"   Using {interval} interval...")
+
+        analyzer.fetch_data(period=period, interval=interval)
         result = analyzer.analyze()
 
         # Generate chart (standard or executive style)
@@ -831,7 +1009,8 @@ def main(args: Optional[list] = None) -> int:
                             for article in sentiment_result.articles
                         ]
                     }
-                except Exception:
+                except Exception as e:
+                    logger.debug(f"Failed to process sentiment data: {e}")
                     pass
 
             chart_path = generate_chart(
